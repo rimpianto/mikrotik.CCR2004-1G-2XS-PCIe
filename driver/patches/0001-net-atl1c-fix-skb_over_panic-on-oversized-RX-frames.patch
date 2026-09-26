@@ -1,7 +1,7 @@
-From 207212182aa8d1d7bab107b7152c86df10ec7888 Mon Sep 17 00:00:00 2001
-From: federico <federico@rimpianto.com>
-Date: Sat, 26 Sep 2026 23:34:31 +0200
-Subject: [PATCH] net: atl1c: fix skb_over_panic on oversized RX frames
+From d3554328fc81dc191531f59372767b83d1e4af6a Mon Sep 17 00:00:00 2001
+From: Federico Musto <federico@rimpianto.com>
+Date: Sun, 27 Sep 2026 01:03:39 +0200
+Subject: [PATCH net] net: atl1c: fix skb_over_panic on oversized RX frames
 
 The atl1c driver sizes its receive buffers from the netdev MTU plus
 a fixed set of L2 overheads.  When the link partner sends frames
@@ -42,14 +42,15 @@ This complements 36c2009d90f2 ("net: atl1c: fix soft lockup on
 out-of-range tpd_cons read"), which fixed the TX side of the same
 "host dies when the CCR2004-PCIe misbehaves" problem.
 
+Fixes: 43250ddd75a3 ("atl1c: Atheros L1C Gigabit Ethernet driver")
 Cc: stable@vger.kernel.org
-Signed-off-by: Federico <federico@rimpianto.com>
+Signed-off-by: Federico Musto <federico@rimpianto.com>
 ---
  .../net/ethernet/atheros/atl1c/atl1c_main.c   | 56 ++++++++++++++++++-
  1 file changed, 54 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/ethernet/atheros/atl1c/atl1c_main.c b/drivers/net/ethernet/atheros/atl1c/atl1c_main.c
-index e58f1d2..c3ca87e 100644
+index e58f1d2..ef965e1 100644
 --- a/drivers/net/ethernet/atheros/atl1c/atl1c_main.c
 +++ b/drivers/net/ethernet/atheros/atl1c/atl1c_main.c
 @@ -484,9 +484,18 @@ static void atl1c_set_rxbufsize(struct atl1c_adapter *adapter,
@@ -141,8 +142,8 @@ index e58f1d2..c3ca87e 100644
 +			netdev->stats.rx_dropped++;
 +			if (netif_msg_rx_err(adapter))
 +				dev_warn_ratelimited(&pdev->dev,
-+					"bad rx frame: len %u tailroom %d\n",
-+					length, skb_tailroom(skb));
++						     "bad rx frame: len %u tailroom %d\n",
++						     length, skb_tailroom(skb));
 +			dev_kfree_skb(skb);
 +			continue;
 +		}
