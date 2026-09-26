@@ -1,0 +1,154 @@
+From 207212182aa8d1d7bab107b7152c86df10ec7888 Mon Sep 17 00:00:00 2001
+From: federico <federico@rimpianto.com>
+Date: Sat, 26 Sep 2026 23:34:31 +0200
+Subject: [PATCH] net: atl1c: fix skb_over_panic on oversized RX frames
+
+The atl1c driver sizes its receive buffers from the netdev MTU plus
+a fixed set of L2 overheads.  When the link partner sends frames
+larger than that - which happens in practice with the MikroTik
+CCR2004-1G-2XS-PCIe, whose RouterOS side defaults to an l2mtu of
+1600 while the Linux host still runs an MTU of 1500 - the length
+reported by the RX return descriptor no longer fits the skb
+allocated for it.  The driver calls skb_put() regardless, which
+trips skb_over_panic and takes the whole host down.
+
+Fix the receive path in three parts:
+
+* atl1c_set_rxbufsize() now always rounds the buffer size up and
+  accounts for the full frame overhead (ETH_HLEN, VLAN_HLEN,
+  ETH_FCS_LEN and NET_IP_ALIGN) instead of using a non-rounded
+  constant for the default-MTU case.
+
+* atl1c_clean_rx() validates the descriptor length against the
+  real skb_tailroom() (and a sane minimum) before calling
+  skb_put().  Frames that do not fit - legitimately oversized or
+  corrupt descriptors read while the device is resetting - are
+  dropped and accounted in rx_length_errors / rx_dropped instead
+  of panicking the host.
+
+* atl1c_change_mtu() enforces the min/max MTU bounds, and no
+  longer silently discards MTU changes requested while the
+  interface is down; the new size is recorded and applied when
+  the rings are allocated on the next atl1c_up().  When the
+  interface is running, the RX buffers are freed by atl1c_down()
+  and re-allocated with the new size by atl1c_up(), as before.
+
+With this in place a peer using a larger L2 MTU no longer crashes
+the host; to actually receive such frames, raise the host MTU to
+match (e.g. 1600 for a RouterOS l2mtu of 1600).  The previous
+workarounds of disabling TSO/GRO are not needed anymore.
+
+This complements 36c2009d90f2 ("net: atl1c: fix soft lockup on
+out-of-range tpd_cons read"), which fixed the TX side of the same
+"host dies when the CCR2004-PCIe misbehaves" problem.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: Federico <federico@rimpianto.com>
+---
+ .../net/ethernet/atheros/atl1c/atl1c_main.c   | 56 ++++++++++++++++++-
+ 1 file changed, 54 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/atheros/atl1c/atl1c_main.c b/drivers/net/ethernet/atheros/atl1c/atl1c_main.c
+index e58f1d2..c3ca87e 100644
+--- a/drivers/net/ethernet/atheros/atl1c/atl1c_main.c
++++ b/drivers/net/ethernet/atheros/atl1c/atl1c_main.c
+@@ -484,9 +484,18 @@ static void atl1c_set_rxbufsize(struct atl1c_adapter *adapter,
+ 				struct net_device *dev)
+ {
+ 	int mtu = dev->mtu;
++	int size;
+ 
+-	adapter->rx_buffer_len = mtu > AT_RX_BUF_SIZE ?
+-		roundup(mtu + ETH_HLEN + ETH_FCS_LEN + VLAN_HLEN, 8) : AT_RX_BUF_SIZE;
++	/* Size the receive buffers for the largest frame the MAC can
++	 * DMA into them: the configured MTU plus the Ethernet header,
++	 * an optional VLAN tag, the FCS and NET_IP_ALIGN.  Round up so
++	 * the DMA mapping length stays aligned; the previous code
++	 * skipped the rounding for the default-MTU case and did not
++	 * account for NET_IP_ALIGN at all.
++	 */
++	size = roundup(mtu + ETH_HLEN + VLAN_HLEN + ETH_FCS_LEN +
++		       NET_IP_ALIGN, 8);
++	adapter->rx_buffer_len = max_t(int, size, AT_RX_BUF_SIZE);
+ }
+ 
+ static netdev_features_t atl1c_fix_features(struct net_device *netdev,
+@@ -528,6 +537,7 @@ static void atl1c_set_max_mtu(struct net_device *netdev)
+ 	struct atl1c_adapter *adapter = netdev_priv(netdev);
+ 	struct atl1c_hw *hw = &adapter->hw;
+ 
++	netdev->min_mtu = ETH_MIN_MTU;
+ 	switch (hw->nic_type) {
+ 	/* These (GbE) devices support jumbo packets, max_mtu 6122 */
+ 	case athr_l1c:
+@@ -557,6 +567,9 @@ static int atl1c_change_mtu(struct net_device *netdev, int new_mtu)
+ {
+ 	struct atl1c_adapter *adapter = netdev_priv(netdev);
+ 
++	if (new_mtu < netdev->min_mtu || new_mtu > netdev->max_mtu)
++		return -EINVAL;
++
+ 	/* set MTU */
+ 	if (netif_running(netdev)) {
+ 		while (test_and_set_bit(__AT_RESETTING, &adapter->flags))
+@@ -564,11 +577,24 @@ static int atl1c_change_mtu(struct net_device *netdev, int new_mtu)
+ 		WRITE_ONCE(netdev->mtu, new_mtu);
+ 		adapter->hw.max_frame_size = new_mtu;
+ 		atl1c_set_rxbufsize(adapter, netdev);
++		/* atl1c_down() releases all pending rx buffers and
++		 * atl1c_up() re-allocates them with the new size.
++		 */
+ 		atl1c_down(adapter);
+ 		netdev_update_features(netdev);
+ 		atl1c_up(adapter);
+ 		clear_bit(__AT_RESETTING, &adapter->flags);
++		return 0;
+ 	}
++
++	/* Interface is down: record the new size; it is applied when
++	 * the rings are allocated on the next atl1c_up().  Without
++	 * this the change is silently lost while the device is down.
++	 */
++	WRITE_ONCE(netdev->mtu, new_mtu);
++	adapter->hw.max_frame_size = new_mtu;
++	atl1c_set_rxbufsize(adapter, netdev);
++
+ 	return 0;
+ }
+ 
+@@ -1934,6 +1960,32 @@ rrs_checked:
+ 			break;
+ 		}
+ 		atl1c_clean_rfd(rfd_ring, rrs, rfd_num);
++
++		/* The hardware may report a frame that is larger than
++		 * what was allocated for the skb.  This happens in
++		 * practice when the link partner uses a bigger L2 MTU:
++		 * MikroTik RouterOS defaults to an l2mtu of 1600 on the
++		 * CCR2004-1G-2XS-PCIe, while the host default MTU of
++		 * 1500 makes the driver allocate only ~1522 bytes.
++		 * Feeding such a frame to skb_put() triggers
++		 * skb_over_panic and kills the host.
++		 *
++		 * Validate the length reported by the descriptor against
++		 * the real tailroom of the skb (and a sane minimum)
++		 * before touching the skb, and drop anything that does
++		 * not fit cleanly.
++		 */
++		if (unlikely(length < ETH_HLEN + ETH_FCS_LEN) ||
++		    unlikely(length - ETH_FCS_LEN > skb_tailroom(skb))) {
++			netdev->stats.rx_length_errors++;
++			netdev->stats.rx_dropped++;
++			if (netif_msg_rx_err(adapter))
++				dev_warn_ratelimited(&pdev->dev,
++					"bad rx frame: len %u tailroom %d\n",
++					length, skb_tailroom(skb));
++			dev_kfree_skb(skb);
++			continue;
++		}
+ 		skb_put(skb, length - ETH_FCS_LEN);
+ 		skb->protocol = eth_type_trans(skb, netdev);
+ 		atl1c_rx_checksum(adapter, skb, rrs);
+-- 
+2.54.0 (Apple Git-157)
+
