@@ -1,0 +1,2 @@
+# mikrotik.CCR2004-1G-2XS-PCIe
+CCR2004-1G-2XS-PCIe
