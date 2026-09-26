@@ -1,0 +1,21 @@
+00:28:12 [ccr-safe-reboot] PASSO1 ok: scheda raggiungibile via nic3
+00:28:12 [ccr-safe-reboot] PASSO2 ok: nic0 staccata da vmbr0, interfacce atl1c down
+00:28:14 [ccr-safe-reboot]   NB: vmbr0 senza uplink (atteso se nic0 era l'unico port)
+00:28:17 [ccr-safe-reboot] PASSO3: funzione 0000:01:00.0 rimossa
+00:28:17 [ccr-safe-reboot] PASSO3: funzione 0000:01:00.1 rimossa
+00:28:17 [ccr-safe-reboot] PASSO3: funzione 0000:01:00.2 rimossa
+00:28:17 [ccr-safe-reboot] PASSO3: funzione 0000:01:00.3 rimossa
+00:28:17 [ccr-safe-reboot] PASSO3 ok: remove completato senza wedge
+00:28:18 [ccr-safe-reboot] PASSO4: reboot ordinato
+00:28:27 [ccr-safe-reboot] PASSO5: attesa 150s boot scheda...
+00:32:00 [ccr-safe-reboot] PASSO1 ok: scheda raggiungibile via nic3
+00:32:00 [ccr-safe-reboot] PASSO2 ok: nic0 staccata da vmbr0, interfacce atl1c down
+00:32:02 [ccr-safe-reboot]   NB: vmbr0 senza uplink (atteso se nic0 era l'unico port)
+00:32:05 [ccr-safe-reboot] PASSO3: funzione 0000:01:00.0 rimossa
+00:32:05 [ccr-safe-reboot] PASSO3: funzione 0000:01:00.1 rimossa
+00:32:05 [ccr-safe-reboot] PASSO3: funzione 0000:01:00.2 rimossa
+00:32:05 [ccr-safe-reboot] PASSO3: funzione 0000:01:00.3 rimossa
+00:32:05 [ccr-safe-reboot] PASSO3 ok: remove completato senza wedge
+00:32:06 [ccr-safe-reboot] PASSO4: reboot ordinato
+00:32:15 [ccr-safe-reboot] PASSO5: attesa 150s boot scheda...
+00:34:55 [ccr-safe-reboot] PASSO5: rescan#1 fallito, retry tra 60s
