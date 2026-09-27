@@ -2,7 +2,7 @@
 
 Everything we learned (the hard way) about running the MikroTik
 **CCR2004-1G-2XS-PCIe** (4x Qualcomm Atheros AR8151, driven by the Linux
-`atl1c` driver) inside a Proxmox VE host — in our case a Minisforum
+`atl1c` driver) inside a Proxmox VE host - in our case a Minisforum
 MS-02 Ultra, the same combo discussed in the MikroTik forum thread
 *"CCR2004-1G-2XS-PCIe: Impossible to update RouterOS without crashing
 Proxmox/Linux Host"*.
