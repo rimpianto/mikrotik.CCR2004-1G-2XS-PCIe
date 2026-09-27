@@ -90,40 +90,57 @@ works).
 |---|----------|---------|
 | 1 | `modprobe -r atl1c` with the driver active (card healthy) | **Instant host wedge** |
 | 2 | `echo remove` of the PCI functions with the driver active (nic0 an active bridge port, link up) | **Instant host wedge** |
-| 3 | Quiesce the driver (`ip link set nic0 nomaster` + down on nic0/1/2/5) → `echo remove` 01:00.{0..3} → card reboot via management network | **Kernel alive and healthy** throughout the card reboot (clean shutdown visible in the journal) |
+| 3 | Quiesce the driver (`ip link set nic0 nomaster` + down on nic0/1/2/5) → `echo remove` 01:00.{0..3} → card reboot via management network | run 1: kernel alive; run 2 (identical): **silent full-platform freeze ~1 min after the card reboot** — zero kernel errors, every NIC dead (10GbE on another root port included), only the Intel ME answering; AMT power cycle recovery in ~45 s |
 | 4 | As 3, waited for the card boot → `echo 1 > /sys/bus/pci/rescan` | **The card does NOT re-enumerate**; DMAR fault storm at teardown; DMA of every NIC wedged until the host is rebooted |
+| 5 | Quiesce → remove → **LnkDisable=1 on the root port** (LnkCtl bit 4, verified DLActive=0) → card reboot via management network | **Kernel alive 4/4** (2 scripted, 1 fully manual, 1 fully unattended with `--auto`: the host schedules its own final warm reboot and returns by itself in ~6 min) |
 
 Conclusions:
 
 - Teardown/remove of atl1c **with the driver active** is lethal (wedge),
-  but with a quiescent driver it is clean → a safe host-side procedure
-  exists (see `scripts/ccr-safe-reboot`).
-- After its own reboot the CCR2004 **does not come back on the PCIe bus**:
-  a host power cycle is required (confirms the boot-block report by Eki99
-  and the need for the card-side fix "probably under NDA" mentioned by
-  gajdipajti in the forum thread).
+  but with a quiescent driver it is clean — yet NOT sufficient: without
+  the link disable, the card's reset can still freeze the whole platform
+  (1-in-2 in our runs), at a level below the OS (no kernel messages at
+  all; only the Intel ME survives).
+- The disturbance travels on the **PCIe link**, not on the functions:
+  with the link disabled (LnkDisable on the root port) before the card
+  resets, the host survived every single run (4/4).
+- After its own reboot the CCR2004 **does not come back on the PCIe bus**
+  while the host stays up: a host (warm) reboot is required. With
+  LnkDisable cleared at runtime the link does not re-train either —
+  the final warm reboot is a structural part of the procedure.
 - The DMA fault storm at reset is the mechanism that also kills NICs
   outside the card path: it is the DMAR/IOMMU that wedges, not the
   individual drivers.
 
 ## Safe procedure to reboot/upgrade the card (host survives)
 
-Script `/usr/local/bin/ccr-safe-reboot` on the PVE host (step-by-step
-logging to `/var/log/ccr-safe-reboot.log`):
+`scripts/ccr-linksafe-reboot` (v1.2) — replaces the retired
+`ccr-safe-reboot`, which did not disable the link and could freeze the
+platform 1-in-2 runs:
 
 ```
-1. route to the management network via an independent interface (onboard 10GbE)
+1. control path via an independent NIC (NOT one of the card's) +
+   pin the default route + host route to your SSH client there
 2. quiesce atl1c: ip link set nic0 nomaster; nic0/1/2/5 down
 3. echo 1 > /sys/bus/pci/devices/0000:01:00.{0..3}/remove
-4. ssh admin@<card> "/system reboot"      # via management network
-5. wait 150s
-6. echo 1 > /sys/bus/pci/rescan           # NB: currently does NOT re-enumerate
-7. ip link set nic0 mtu 1600 up; ip link set nic0 master vmbr0
+4. setpci -s <root-port> CAP_EXP+10.w=<val|0x10>   # LnkDisable=1, THE key step
+   verify: setpci -s <root-port> CAP_EXP+12.w       # bit 13 (0x4000) = 0
+   (if the link stays up: the script rolls back and aborts, no card reboot)
+5. ssh admin@<card> "/system reboot"               # via management network
+6. wait for the card to answer ping (~20-30 s)
+7. setpci -s <root-port> CAP_EXP+10.w=<orig>       # LnkDisable=0 (no hot re-train)
+8. echo 1 > /sys/bus/pci/rescan                    # fails (expected)
+9. final warm reboot of the host (mandatory: link won't re-train hot +
+   DMA wedged). --auto schedules and performs it itself: fully unattended,
+   host back in ~6 minutes, card enumerated, MTU restored.
 ```
 
-**Verification status**: steps 1-5 verified working (kernel alive);
-step 6 fails with the card in post-reboot state (does not re-enumerate) —
-the host survives regardless and needs a warm reboot to get the card back.
+**Verification status**: 4/4 runs with the kernel alive throughout,
+including one fully unattended cycle. For unattended hosts, pair with
+the boot hardening documented at
+https://github.com/rimpianto/minisforum.ms-02-ultra
+(GRUB recordfail timeout, kernel `panic=10`, Intel TCO hardware
+watchdog — so that even a hypothetical freeze self-recovers in ~3 min).
 
 Practical note: after a "soft" crash (type 3) the AMT KVM console still
 works and rebooting from the console is possible — ~5 minute recovery
