@@ -1,6 +1,6 @@
-From d3554328fc81dc191531f59372767b83d1e4af6a Mon Sep 17 00:00:00 2001
+From c2047dea5df48ad02edce9825d4a02fe233ed9cc Mon Sep 17 00:00:00 2001
 From: Federico Musto <federico@rimpianto.com>
-Date: Sun, 27 Sep 2026 01:03:39 +0200
+Date: Sun, 27 Sep 2026 10:54:35 +0200
 Subject: [PATCH net] net: atl1c: fix skb_over_panic on oversized RX frames
 
 The atl1c driver sizes its receive buffers from the netdev MTU plus
@@ -45,6 +45,43 @@ out-of-range tpd_cons read"), which fixed the TX side of the same
 Fixes: 43250ddd75a3 ("atl1c: Atheros L1C Gigabit Ethernet driver")
 Cc: stable@vger.kernel.org
 Signed-off-by: Federico Musto <federico@rimpianto.com>
+---
+Notes for reviewers (not part of the commit message):
+
+This is my first kernel patch submission, so I expect and welcome
+nitpicks on style/process as much as on substance.
+
+Honest scope disclosure:
+
+- The descriptor bounds check in atl1c_clean_rx() is the core of the
+  fix and is what actually stops the host from panicking (verified in
+  production on the affected hardware: stock driver panics, patched
+  driver survives the same traffic).
+- The rx_buffer_len change (NET_IP_ALIGN addition + unconditional
+  rounding) is defensive margin: napi_alloc_skb() already accounts
+  for NET_SKB_PAD/NET_IP_ALIGN on its own, so its contribution here
+  is only 2 extra bytes of tailroom headroom. It does not change the
+  buffer size for default MTU in practice. I kept it because it was
+  in the original fix I developed against, but I am happy to drop it
+  if maintainers prefer the minimal diff.
+- The explicit min/max bounds check in atl1c_change_mtu() is
+  redundant with the checks in __dev_set_mtu(); I kept it as
+  defense-in-depth for the same reason. Happy to remove.
+- The "MTU change lost while interface is down" half of the
+  atl1c_change_mtu() changes fixes a real (if minor) bug: with the
+  stock driver, setting the MTU on a down interface silently did
+  nothing.
+
+Tested on: MikroTik CCR2004-1G-2XS-PCIe (4x AR8151) on a Proxmox VE
+host, kernel 7.0.14 (atl1c from DKMS with this patch). The panic was
+reproduced reliably with the stock driver and l2mtu-1600 traffic from
+the card; after the patch, with host MTU raised to 1600, the same
+traffic flows with zero panics and zero drops. The patch applies
+cleanly and was re-verified against current mainline
+(drivers/net/ethernet/atheros/atl1c/atl1c_main.c).
+
+Full reproduction details, kernel logs and the DKMS package used for
+testing: https://github.com/rimpianto/mikrotik.CCR2004-1G-2XS-PCIe
 ---
  .../net/ethernet/atheros/atl1c/atl1c_main.c   | 56 ++++++++++++++++++-
  1 file changed, 54 insertions(+), 2 deletions(-)
