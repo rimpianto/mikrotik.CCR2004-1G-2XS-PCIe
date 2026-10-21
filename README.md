@@ -15,7 +15,7 @@ This repository contains:
 | `driver/atl1c-dkms-1.1/` | Full DKMS package: patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup) |
 | `scripts/ccr-linksafe-reboot` | Bash v1.7: safe reboot/upgrade procedure (link disabled on the root port) |
 | `scripts/ccr-linksafe-reboot.ver.2.2.0.fish` | Fish v2.2.0 (current): same procedure, ssh-key only, failsafe, reboot verified, `--dry`, `--upgrade` |
-| `docs/MANUALE-ccr-linksafe-reboot-v2.2.0.md` | Manuale (IT) della v2.2.0: opzioni, codici di uscita, lettura del log |
+| `docs/ccr-linksafe-reboot-v2.2.0.md` | Manual (EN) for v2.2.0: options, exit codes, reading the log, remote run |
 | `docs/CCR2004-PCIe-Report.md` | Full technical report: crash analysis, kernel logs, experiment matrix |
 | `logs/` | Raw evidence: kernel journals and procedure logs from the crash experiments |
 
@@ -80,7 +80,7 @@ Both require a management path to the card that does **not** go through it
 to `admin@<card>`. The procedure quiets `atl1c`, removes the PCI functions,
 disables the PCIe link on the root port, reboots the card, waits, rescans,
 re-attaches the port. Verified to keep the kernel alive; see the report and
-`docs/MANUALE-ccr-linksafe-reboot-v2.2.0.md`.
+`docs/ccr-linksafe-reboot-v2.2.0.md`.
 
 ## Credits
 
