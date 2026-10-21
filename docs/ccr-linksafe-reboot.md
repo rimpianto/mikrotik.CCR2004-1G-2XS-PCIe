@@ -173,9 +173,17 @@ child of your SSH session and can be killed by SIGHUP if the connection drops ha
 For any run where you may be disconnected, use `--auto` and detach it:
 
 ```sh
+# 1. launch it detached, so it survives the ssh session going away
 nohup /root/ccr-linksafe-reboot.ver.2.2.1.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
-exit
+
+# 2. follow the same run in the foreground: every step, live, until the host reboots
+tail -n 0 -f /var/log/ccr-linksafe-reboot.log
 ```
+
+`tail -n 0` shows only the new lines (use `-n 20` to see some context), the `-f` keeps
+following the file as the script appends to it. When the host reboots the tail dies with
+the session: that is the end of the procedure, and the log stays on disk for the
+post-mortem.
 
 What happens then (≈8-12 minutes with both card reboots, no interaction):
 

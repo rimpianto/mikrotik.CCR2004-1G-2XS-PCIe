@@ -20,6 +20,7 @@ sudo ./scripts/ccr-linksafe-reboot.ver.2.2.1.fish --dry              # simulate,
 sudo ./scripts/ccr-linksafe-reboot.ver.2.2.1.fish                    # interactive, asks for confirmation
 # unattended (survives a dropped ssh session, reboots the host at the end):
 nohup ./scripts/ccr-linksafe-reboot.ver.2.2.1.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
+tail -n 0 -f /var/log/ccr-linksafe-reboot.log     # follow the steps live until the reboot
 ```
 
 Requirements: root, `fish`, an **ssh key** from the host to `admin@<card>` (no credential
