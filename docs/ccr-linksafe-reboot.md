@@ -177,11 +177,14 @@ For any run where you may be disconnected, use `--auto` and detach it:
 nohup /root/ccr-linksafe-reboot.ver.2.2.1.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
 
 # 2. follow the same run in the foreground: every step, live, until the host reboots
-tail -n 0 -f /var/log/ccr-linksafe-reboot.log
+touch /var/log/ccr-linksafe-reboot.log
+tail -n 0 -F /var/log/ccr-linksafe-reboot.log
 ```
 
-`tail -n 0` shows only the new lines (use `-n 20` to see some context), the `-f` keeps
-following the file as the script appends to it. When the host reboots the tail dies with
+`-F` (capital) keeps retrying if the file does not exist yet: the script creates it with
+`tee -a` at the first line, and a plain `-f` would exit with "no files remaining" if you
+start the tail first (or right after deleting the log). `-n 0` shows only the new lines
+(use `-n 20` for some context). When the host reboots the tail dies with
 the session: that is the end of the procedure, and the log stays on disk for the
 post-mortem.
 
