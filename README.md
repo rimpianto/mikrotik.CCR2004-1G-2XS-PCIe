@@ -9,17 +9,17 @@ Proxmox/Linux Host"*.
 
 ## Reboot / upgrade the card without killing the host
 
-`scripts/ccr-linksafe-reboot.ver.2.2.0.fish` (fish, **current**) implements the validated
+`scripts/ccr-linksafe-reboot.ver.2.2.1.fish` (fish, **current**) implements the validated
 link-disable procedure: it quiesces `atl1c`, removes the PCI functions, disables the
 **PCIe link on the root port**, reboots the card (optionally upgrading RouterOS and the
 RouterBOARD firmware), then restores the link, rescans and reboots the host. The original
 **bash v1.7** (`scripts/ccr-linksafe-reboot`, validated 6/6) is kept for reference.
 
 ```sh
-sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish --dry              # simulate, change nothing
-sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish                    # interactive, asks for confirmation
+sudo ./scripts/ccr-linksafe-reboot.ver.2.2.1.fish --dry              # simulate, change nothing
+sudo ./scripts/ccr-linksafe-reboot.ver.2.2.1.fish                    # interactive, asks for confirmation
 # unattended (survives a dropped ssh session, reboots the host at the end):
-nohup ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
+nohup ./scripts/ccr-linksafe-reboot.ver.2.2.1.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
 ```
 
 Requirements: root, `fish`, an **ssh key** from the host to `admin@<card>` (no credential
@@ -28,7 +28,7 @@ is stored in the script) and a management path to the card that does **not** go 
 only; if the host is unreachable, recovery is out-of-band (Intel AMT).
 
 Options, exit codes, log reference and remote-run notes:
-**[`docs/ccr-linksafe-reboot-v2.2.0.md`](docs/ccr-linksafe-reboot-v2.2.0.md)**.
+**[`docs/ccr-linksafe-reboot.md`](docs/ccr-linksafe-reboot.md)**.
 
 This repository contains:
 
@@ -37,8 +37,8 @@ This repository contains:
 | `driver/patches/` | Kernel patch (`git format-patch`) fixing `skb_over_panic` on oversized RX frames |
 | `driver/atl1c-dkms-1.1/` | Full DKMS package: patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup) |
 | `scripts/ccr-linksafe-reboot` | Bash v1.7: safe reboot/upgrade procedure (link disabled on the root port) |
-| `scripts/ccr-linksafe-reboot.ver.2.2.0.fish` | Fish v2.2.0 (current): same procedure, ssh-key only, failsafe, reboot verified, `--dry`, `--upgrade` |
-| `docs/ccr-linksafe-reboot-v2.2.0.md` | Manual (EN) for v2.2.0: options, exit codes, reading the log, remote run |
+| `scripts/ccr-linksafe-reboot.ver.2.2.1.fish` | Fish v2.2.1 (current): same procedure, ssh-key only, failsafe, reboot verified, `--dry`, `--upgrade` |
+| `docs/ccr-linksafe-reboot.md` | Manual (EN) for v2.2.1: options, exit codes, reading the log, remote run |
 | `docs/CCR2004-PCIe-Report.md` | Full technical report: crash analysis, kernel logs, experiment matrix |
 | `logs/` | Raw evidence: kernel journals and procedure logs from the crash experiments |
 

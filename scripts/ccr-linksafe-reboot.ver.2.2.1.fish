@@ -1,7 +1,7 @@
 #!/usr/bin/env fish
 # ==============================================================================
 # SCRIPT NAME : ccr-linksafe-reboot.fish
-# VERSION     : 2.2.0
+# VERSION     : 2.2.1
 # DATE        : October 21, 2026
 # BASED ON    : bash v1.7 (validated 6/6) + fish v2.1.0
 # DESCRIPTION : Safe reboot / upgrade of a MikroTik CCR2004-1G-2XS-PCIe card.
@@ -33,7 +33,7 @@
 #       (a command that PRINTS the password — never the password itself).
 # ==============================================================================
 
-set -g SCRIPT_VERSION "2.2.0"
+set -g SCRIPT_VERSION "2.2.1"
 
 # --- DEFAULT HARDWARE PARAMETERS (override with env vars) ---
 set -g CARD_IP (set -q CARD_IP; and echo $CARD_IP; or echo "192.0.2.148")
@@ -184,6 +184,13 @@ function run_on_card --argument-names cmd tmo
     end
 end
 
+# read a single RouterOS property without parsing formatted output: the
+# console wraps long values, and an awk on "print" produced garbage
+# (e.g. "stablemode" read as the RouterOS version).
+function card_get --argument-names path prop
+    run_on_card ":put [/$path get $prop]" 20 | tr -d '\r' | string trim
+end
+
 function card_ssh_rc --argument-names cmd tmo
     run_on_card $cmd $tmo >/dev/null
     return $status
@@ -290,21 +297,29 @@ if test $UPGRADE -eq 1; and test $DRY -eq 1
     log "[DRY] would check for RouterOS updates and download them while the link is up (PHASE A)"
 else if test $UPGRADE -eq 1
     log "PHASE A: checking RouterOS updates (link still up)..."
-    set -l upd (run_on_card "/system package update print" 30)
-    if string match -q -- "*Downloaded, please reboot*" "$upd"
-        log "PHASE A: update already downloaded and staged (keeping it)"
+    set -g PKG_UPDATE 0
+    set -l st (card_get "system package update" "status")
+    if string match -q -- "*Downloaded*" "$st"
+        log "PHASE A: package already downloaded and staged (keeping it)"
         set -g PKG_UPDATE 1
     else
         run_on_card "/system package update check-for-updates" 30 >/dev/null
-        for k in (seq 1 20)
+        # async: wait until latest-version is populated AND the status has
+        # settled (an empty field right after the check is not "up to date")
+        set -l waited 0
+        set -l latest ""
+        while test $waited -lt 60
             sleep 3
-            set upd (run_on_card "/system package update print" 30)
-            string match -q -- "*finding out*" "$upd"; or break
+            set waited (math $waited + 3)
+            set st (card_get "system package update" "status")
+            set latest (card_get "system package update" "latest-version")
+            if test -n "$latest"; and not string match -q -- "*finding out*" "$st"
+                break
+            end
         end
-        set -l inst (echo "$upd" | awk -F': *' '/installed-version/{v=$2} END{print v}' | tr -d '\r ')
-        set -l latest (echo "$upd" | awk -F': *' '/latest-version/{v=$2} END{print v}' | tr -d '\r ')
+        set -l inst (card_get "system package update" "installed-version")
         if test -z "$latest"
-            log "PHASE A WARNING: latest-version not readable (check-for-updates failed?) — continuing WITHOUT package update"
+            log "PHASE A WARNING: latest-version empty (check failed?) — continuing WITHOUT package update"
             set -g PKG_UPDATE 0
         else if test "$inst" = "$latest"
             log "PHASE A: RouterOS $inst is the latest (no package update needed)"
@@ -312,14 +327,15 @@ else if test $UPGRADE -eq 1
         else
             log "PHASE A: update $inst -> $latest available, downloading (zero downtime)..."
             run_on_card "/system package update download" 60 >/dev/null
-            set -l dl ""
-            for k in (seq 1 40)
+            set -l waited 0
+            while test $waited -lt 200
                 sleep 5
-                set dl (run_on_card "/system package update print" 30)
-                string match -q -- "*Downloaded, please reboot*" "$dl"; and break
+                set waited (math $waited + 5)
+                set st (card_get "system package update" "status")
+                string match -q -- "*Downloaded*" "$st"; and break
             end
-            if string match -q -- "*Downloaded, please reboot*" "$dl"
-                log "PHASE A: package downloaded and staged"
+            if string match -q -- "*Downloaded*" "$st"
+                log "PHASE A: package downloaded and staged ($inst -> $latest)"
                 set -g PKG_UPDATE 1
             else
                 abort_run "download did not complete — nothing was touched" 1
@@ -524,8 +540,11 @@ if test $UPGRADE -eq 1; and test $DRY -eq 0
     if test $fw_rc -ne 0
         abort_run "routerboard upgrade command failed (ssh rc=$fw_rc)" 3
     end
-    if string match -qi -- "*please reboot*" "$fw"; or string match -qi -- "*upgraded*" "$fw"
-        log "STEP5b: firmware staged, ordering card reboot #2..."
+    set -l fw_cur (card_get "system routerboard" "current-firmware")
+    set -l fw_upg (card_get "system routerboard" "upgrade-firmware")
+    log "STEP5b: firmware current=$fw_cur upgrade=$fw_upg"
+    if test -n "$fw_upg"; and test "$fw_cur" != "$fw_upg"
+        log "STEP5b: firmware upgrade pending ($fw_cur -> $fw_upg), ordering card reboot #2..."
         card_ssh_rc "/system reboot" 20
         set -l rc2 $status
         if test $rc2 -ne 0; and test $rc2 -ne 255
@@ -543,8 +562,12 @@ if test $UPGRADE -eq 1; and test $DRY -eq 0
         else
             log "STEP6b WARN: card not answering after 480s — continuing"
         end
+    else if string match -qi -- "*please reboot*" "$fw"; or string match -qi -- "*upgraded successfully*" "$fw"
+        # the card says it wrote the firmware, but the property already matches:
+        # nothing left to apply, no second reboot
+        log "STEP5b: firmware already applied ($fw_cur), no second reboot needed"
     else
-        log "STEP5b: no firmware staging needed (already current)"
+        log "STEP5b: no firmware staging needed (current $fw_cur)"
     end
     log "VERIFY: installed RouterOS + firmware:"
     run_on_card "/system package update print; /system routerboard print" 30 | tee -a $LOG
