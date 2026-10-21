@@ -177,7 +177,7 @@ nohup /root/ccr-linksafe-reboot.ver.2.2.0.fish --upgrade --auto </dev/null >/dev
 exit
 ```
 
-What happens then (≈6-8 minutes, no interaction):
+What happens then (≈8-12 minutes with both card reboots, no interaction):
 
 1. PHASE A downloads the package with the link still up;
 2. the script arms the +30 min failsafe and takes the host's bridge down;
