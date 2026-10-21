@@ -7,6 +7,29 @@ MS-02 Ultra, the same combo discussed in the MikroTik forum thread
 *"CCR2004-1G-2XS-PCIe: Impossible to update RouterOS without crashing
 Proxmox/Linux Host"*.
 
+## Reboot / upgrade the card without killing the host
+
+`scripts/ccr-linksafe-reboot.ver.2.2.0.fish` (fish, **current**) implements the validated
+link-disable procedure: it quiesces `atl1c`, removes the PCI functions, disables the
+**PCIe link on the root port**, reboots the card (optionally upgrading RouterOS and the
+RouterBOARD firmware), then restores the link, rescans and reboots the host. The original
+**bash v1.7** (`scripts/ccr-linksafe-reboot`, validated 6/6) is kept for reference.
+
+```sh
+sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish --dry              # simulate, change nothing
+sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish                    # interactive, asks for confirmation
+# unattended (survives a dropped ssh session, reboots the host at the end):
+nohup ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
+```
+
+Requirements: root, `fish`, an **ssh key** from the host to `admin@<card>` (no credential
+is stored in the script) and a management path to the card that does **not** go through it
+(e.g. the onboard 10GbE). During the procedure the host is reachable on the control NIC
+only; if the host is unreachable, recovery is out-of-band (Intel AMT).
+
+Options, exit codes, log reference and remote-run notes:
+**[`docs/ccr-linksafe-reboot-v2.2.0.md`](docs/ccr-linksafe-reboot-v2.2.0.md)**.
+
 This repository contains:
 
 | Path | What |
@@ -59,28 +82,6 @@ ip link set <iface> mtu 1600 up
 # and in /etc/network/interfaces for the bridge:
 #   mtu 1600
 ```
-
-### Reboot / upgrade the card without killing the host
-
-Two implementations of the same validated procedure:
-
-| Script | Language | Notes |
-|---|---|---|
-| `scripts/ccr-linksafe-reboot` | bash v1.7 | original, validated 6/6 |
-| `scripts/ccr-linksafe-reboot.ver.2.2.0.fish` | fish v2.2.0 | current: **no credentials in the file** (ssh key only), +30 min failsafe, reboot confirmed by ping, `--dry`, `--upgrade` cycle |
-
-```sh
-sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish --dry              # simulate, change nothing
-sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish                    # interactive, asks for confirmation
-sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish --upgrade --auto   # unattended RouterOS + firmware cycle
-```
-
-Both require a management path to the card that does **not** go through it
-(e.g. the onboard 10GbE) and, for the fish version, an ssh key from the host
-to `admin@<card>`. The procedure quiets `atl1c`, removes the PCI functions,
-disables the PCIe link on the root port, reboots the card, waits, rescans,
-re-attaches the port. Verified to keep the kernel alive; see the report and
-`docs/ccr-linksafe-reboot-v2.2.0.md`.
 
 ## Credits
 
