@@ -13,7 +13,9 @@ This repository contains:
 |------|------|
 | `driver/patches/` | Kernel patch (`git format-patch`) fixing `skb_over_panic` on oversized RX frames |
 | `driver/atl1c-dkms-1.1/` | Full DKMS package: patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup) |
-| `scripts/ccr-safe-reboot` | Safe reboot/upgrade procedure for the card that keeps the host kernel alive |
+| `scripts/ccr-linksafe-reboot` | Bash v1.7: safe reboot/upgrade procedure (link disabled on the root port) |
+| `scripts/ccr-linksafe-reboot.ver.2.2.0.fish` | Fish v2.2.0 (current): same procedure, ssh-key only, failsafe, reboot verified, `--dry`, `--upgrade` |
+| `docs/MANUALE-ccr-linksafe-reboot-v2.2.0.md` | Manuale (IT) della v2.2.0: opzioni, codici di uscita, lettura del log |
 | `docs/CCR2004-PCIe-Report.md` | Full technical report: crash analysis, kernel logs, experiment matrix |
 | `logs/` | Raw evidence: kernel journals and procedure logs from the crash experiments |
 
@@ -48,7 +50,7 @@ sudo modprobe -r atl1c && sudo modprobe atl1c    # see warning below
 > ⚠️ **Never unload/remove `atl1c` while the driver is active**
 > (interfaces up, port attached to a bridge): on this hardware it
 > wedges the kernel instantly. Take the interfaces down / detach them
-> from the bridge first. The `ccr-safe-reboot` script does this for you.
+> from the bridge first. The `ccr-linksafe-reboot` procedure does this for you.
 
 Then raise the host MTU to match RouterOS `l2mtu` (default 1600):
 
@@ -60,16 +62,25 @@ ip link set <iface> mtu 1600 up
 
 ### Reboot / upgrade the card without killing the host
 
+Two implementations of the same validated procedure:
+
+| Script | Language | Notes |
+|---|---|---|
+| `scripts/ccr-linksafe-reboot` | bash v1.7 | original, validated 6/6 |
+| `scripts/ccr-linksafe-reboot.ver.2.2.0.fish` | fish v2.2.0 | current: **no credentials in the file** (ssh key only), +30 min failsafe, reboot confirmed by ping, `--dry`, `--upgrade` cycle |
+
 ```sh
-sudo /usr/local/bin/ccr-safe-reboot
+sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish --dry              # simulate, change nothing
+sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish                    # interactive, asks for confirmation
+sudo ./scripts/ccr-linksafe-reboot.ver.2.2.0.fish --upgrade --auto   # unattended RouterOS + firmware cycle
 ```
 
-The script (requires a management path to the card that does **not**
-go through it — e.g. the onboard 10GbE): quiets `atl1c`, removes the
-PCI functions, orders the card reboot, waits, rescans, re-attaches
-the port to the bridge. Verified to keep the kernel alive; see the
-report for the current state of each step and the residual card-side
-issues.
+Both require a management path to the card that does **not** go through it
+(e.g. the onboard 10GbE) and, for the fish version, an ssh key from the host
+to `admin@<card>`. The procedure quiets `atl1c`, removes the PCI functions,
+disables the PCIe link on the root port, reboots the card, waits, rescans,
+re-attaches the port. Verified to keep the kernel alive; see the report and
+`docs/MANUALE-ccr-linksafe-reboot-v2.2.0.md`.
 
 ## Credits
 
