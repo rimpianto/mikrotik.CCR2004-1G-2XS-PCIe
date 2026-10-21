@@ -106,6 +106,14 @@ returns ~10 s before sshd accepts commands. Timeout 300 s.
 a wait of up to 480 s (post-firmware boot is slower). Then the installed versions are
 printed into the log (`package update print`, `routerboard print`).
 
+> Note: the RouterBOARD firmware ships **with the RouterOS package**, and this step runs
+> **after** the package install. If the new release carries a new routerboot,
+> `current-firmware` and `upgrade-firmware` will differ at that point and the second
+> reboot **does** happen. Reading those two fields *before* the install says nothing:
+> they describe the firmware bundled with the currently installed RouterOS (on this card
+> `current-firmware: 7.24.4` with RouterOS 7.24.4). A RouterOS upgrade therefore normally
+> means **two** card reboots.
+
 ### STEP 7 — link back up
 Restores the **original** LnkCtl value and waits up to 60 s for the retrain.
 On this firmware the retrain **does not happen**: the WARN is expected, not an error.
@@ -173,7 +181,8 @@ What happens then (≈6-8 minutes, no interaction):
 
 1. PHASE A downloads the package with the link still up;
 2. the script arms the +30 min failsafe and takes the host's bridge down;
-3. the card is updated and rebooted with the PCIe link disabled;
+3. the card is updated and rebooted with the PCIe link disabled (twice, if the new
+   release ships a new routerboot);
 4. the link is restored, then the script **reboots the host itself** and cancels the failsafe;
 5. the host comes back on its normal management address; the log holds the `VERIFY:` block.
 
