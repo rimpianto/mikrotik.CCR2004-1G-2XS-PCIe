@@ -1,4 +1,4 @@
-# ccr-linksafe-reboot.fish v2.2.1 — manual
+# ccr-linksafe-reboot.fish v2.3.0 — manual
 
 Reboot and upgrade the **MikroTik CCR2004-1G-2XS-PCIe** inside a **Proxmox VE** host
 with the **PCIe link disabled** for the whole duration of the card reset. This is the
@@ -154,15 +154,59 @@ Typical combinations:
 
 ```sh
 # lab, watching the log
-./scripts/ccr-linksafe-reboot.ver.2.2.1.fish
+./scripts/ccr-linksafe-reboot.ver.2.3.0.fish
 
 # lab, full RouterOS + firmware cycle
-./scripts/ccr-linksafe-reboot.ver.2.2.1.fish --upgrade
+./scripts/ccr-linksafe-reboot.ver.2.3.0.fish --upgrade
 
 # remote / WAN: launch, disconnect, everything comes back by itself
-nohup ./scripts/ccr-linksafe-reboot.ver.2.2.1.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
+nohup ./scripts/ccr-linksafe-reboot.ver.2.3.0.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
 exit
 ```
+
+---
+
+## 3b. Configuration file (v2.3.0+)
+
+Host parameters no longer have to be exported by hand: the script reads
+`/etc/ccr-linksafe.conf` (override with `CCR_LINKSAFE_CONF=/path/file`) before applying
+its defaults. Format is `KEY=VALUE`, one per line, `#` for comments, quotes optional.
+
+```sh
+# /etc/ccr-linksafe.conf
+CARD_IP=192.0.2.1
+CARD_USER=ccr-admin
+CTRL_IF=mgmt0
+GW=
+ROOTPORT=00:06.0
+CARDPCI=0000:01:00
+BRIDGE=vmbr0
+BRIDGE_PORT=nic0
+CARD_IFS=nic0 nic1 nic2 nic3
+MTU=1600
+LOG=/var/log/ccr-linksafe-reboot.log
+```
+
+Precedence: command line (`--card-ip`, `--gw`) > environment > config file > built-in
+defaults. A variable already present in the environment is never overwritten by the file,
+so `CARD_IP=10.0.0.9 ./script --dry` still wins over the file.
+
+Two details that matter on a real host:
+
+- `GW=` empty is meaningful: the script will not touch the default route. Use it when the
+  card itself is the gateway of the site (no independent path exists).
+- the SSH port of the card is not a script parameter. If RouterOS listens on a
+  non-default port, map it in the `~/.ssh/config` of the user running the script:
+
+```sh
+Host 192.0.2.1
+     HostName 192.0.2.1
+     User ccr-admin
+     Port 444
+     IdentityFile ~/.ssh/id_ed25519-git
+```
+
+An example file ships in `examples/ccr-linksafe.conf.example`.
 
 ---
 
@@ -174,7 +218,7 @@ For any run where you may be disconnected, use `--auto` and detach it:
 
 ```sh
 # 1. launch it detached, so it survives the ssh session going away
-nohup /root/ccr-linksafe-reboot.ver.2.2.1.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
+nohup /root/ccr-linksafe-reboot.ver.2.3.0.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
 
 # 2. follow the same run in the foreground: every step, live, until the host reboots
 touch /var/log/ccr-linksafe-reboot.log
@@ -228,7 +272,7 @@ Every value has a default for this host and can be overridden without editing th
 On another machine:
 
 ```sh
-CARD_IP=10.0.0.5 CTRL_IF=ens18 ROOTPORT=00:1c.0 ./scripts/ccr-linksafe-reboot.ver.2.2.1.fish --dry
+CARD_IP=10.0.0.5 CTRL_IF=ens18 ROOTPORT=00:1c.0 ./scripts/ccr-linksafe-reboot.ver.2.3.0.fish --dry
 ```
 
 ---
@@ -290,7 +334,7 @@ routes put back (if the quiesce has not happened yet), failsafe cancelled.
 
 ## 8. Reading the log
 
-Every line is `HH:MM:SS [v2.2.1] message` and is appended to `$LOG`.
+Every line is `HH:MM:SS [v2.3.0] message` and is appended to `$LOG`.
 
 | Line | Meaning |
 |---|---|
@@ -377,6 +421,18 @@ After `--upgrade` the log also contains the `VERIFY:` block with the versions.
 | Log | `/var/log/ccr-linksafe-reboot.log` | different name | same as v1.7 |
 | `--dry` | no | yes (not total) | yes, no change at all |
 
+### Changes in v2.3.0
+
+- **`ssh -n` in `run_on_card`** — fix for a real hang: GNU `timeout` runs the command in
+  its own process group, `ssh` read stdin from the terminal and was stopped by `SIGTTIN`
+  (process state `T`). `/system reboot` was never delivered and the run froze at STEP 5.
+  Reproduced on Proxmox VE 9.2.21 with RouterOS 7.24.4 (22/10/2026).
+- **config file** — `/etc/ccr-linksafe.conf` (or `$CCR_LINKSAFE_CONF`), precedence
+  CLI > environment > file > defaults.
+- **DLActive bit** — the check used bit 14 (0x4000) of the Link Status register instead of
+  bit 13 (0x2000, Data Link Layer Link Active), so STEP 4/STEP 7 printed `DLActive=0` on a
+  link that was actually up. Cosmetic: the procedure and the rescan were correct.
+
 ### Changes in v2.2.1
 
 The first real `--upgrade` run exposed two bugs in the version/firmware detection,
@@ -400,7 +456,7 @@ before comparing (an empty field right after the check is not "up to date").
 | Path | Role |
 |---|---|
 | `scripts/ccr-linksafe-reboot` | bash v1.7, original implementation (kept for reference) |
-| `scripts/ccr-linksafe-reboot.ver.2.2.1.fish` | this script |
+| `scripts/ccr-linksafe-reboot.ver.2.3.0.fish` | this script |
 | `docs/ccr-linksafe-reboot.md` | this manual |
 | `/var/log/ccr-linksafe-reboot.log` | append-only log, survives reboots |
 

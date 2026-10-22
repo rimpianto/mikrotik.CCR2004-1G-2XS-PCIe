@@ -1,0 +1,44 @@
+# /etc/ccr-linksafe.conf — parameters for ccr-linksafe-reboot (fish, v2.3.0+)
+#
+# One KEY=VALUE per line, '#' starts a comment. Quotes around the value are
+# optional. Precedence: command line > environment > this file > script defaults.
+# Put this file on the HOST that contains the card (path: /etc/ccr-linksafe.conf,
+# or point CCR_LINKSAFE_CONF at it).
+
+# Management address of the CCR2004 PCIe card (RouterOS ether1 / mgmt port).
+CARD_IP=192.0.2.1
+
+# SSH user on RouterOS.
+CARD_USER=ccr-admin
+
+# NIC that carries the management path to the card. It must NOT depend on the
+# card, otherwise you lose the host when the link goes down.
+CTRL_IF=mgmt0
+
+# Gateway reachable through CTRL_IF. Leave EMPTY when the card itself is the only
+# gateway of the site: with GW empty the script does not touch the default route.
+GW=
+
+# Root port that hosts the card, and the card PCI address (first function).
+ROOTPORT=00:06.0
+CARDPCI=0000:01:00
+
+# Bridge and the bridge port that goes to the card, plus all card interfaces.
+BRIDGE=vmbr0
+BRIDGE_PORT=nic0
+CARD_IFS=nic0 nic1 nic2 nic3
+
+# MTU for the card ports: match RouterOS l2mtu (default 1600), never lower.
+MTU=1600
+
+# Log file (appended).
+LOG=/var/log/ccr-linksafe-reboot.log
+
+# NOTE: the SSH port of the card is not a script parameter. If RouterOS listens on
+# a non-default port, map it in ~/.ssh/config of the user that runs the script:
+#
+#   Host 192.0.2.1
+#        HostName 192.0.2.1
+#        User ccr-admin
+#        Port 444
+#        IdentityFile ~/.ssh/id_ed25519-git
