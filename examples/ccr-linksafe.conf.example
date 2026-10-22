@@ -1,9 +1,10 @@
-# /etc/ccr-linksafe.conf — parameters for ccr-linksafe-reboot (fish, v2.3.0+)
+# ccr-linksafe.conf — parameters for ccr-linksafe-reboot (fish, v2.3.1+)
+# Copy it next to the script (e.g. /root/ccr2004pcie/ccr-linksafe.conf): the script
+# looks there first, then in /etc, and CCR_LINKSAFE_CONF overrides both.
 #
 # One KEY=VALUE per line, '#' starts a comment. Quotes around the value are
 # optional. Precedence: command line > environment > this file > script defaults.
-# Put this file on the HOST that contains the card (path: /etc/ccr-linksafe.conf,
-# or point CCR_LINKSAFE_CONF at it).
+# Put this file on the HOST that contains the card, in the same directory as the script.
 
 # Management address of the CCR2004 PCIe card (RouterOS ether1 / mgmt port).
 CARD_IP=192.0.2.10

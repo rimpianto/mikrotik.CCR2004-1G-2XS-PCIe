@@ -1,12 +1,19 @@
 #!/usr/bin/env fish
 # ==============================================================================
 # SCRIPT NAME : ccr-linksafe-reboot.fish
-# VERSION     : 2.3.0
+# VERSION     : 2.3.1
 # DATE        : October 21, 2026
 # BASED ON    : bash v1.7 (validated 6/6) + fish v2.1.0
 # DESCRIPTION : Safe reboot / upgrade of a MikroTik CCR2004-1G-2XS-PCIe card.
 #               Disables the PCIe link on the host root port BEFORE the card
 #               resets, so the card's reset glitch cannot freeze the host.
+#
+# CHANGES v2.3.1:
+#   F4  the config file is looked up next to the script first:
+#       <script dir>/ccr-linksafe.conf, then /etc/ccr-linksafe.conf.
+#       $CCR_LINKSAFE_CONF still overrides both. Keeping the parameters in
+#       the same directory as the script (e.g. /root/ccr2004pcie/) means the
+#       whole kit travels together and nothing has to be exported by hand.
 #
 # CHANGES v2.3.0:
 #   F1  ssh is now called with -n: under GNU timeout ssh ended up in its own
@@ -49,7 +56,7 @@
 #       (a command that PRINTS the password — never the password itself).
 # ==============================================================================
 
-set -g SCRIPT_VERSION "2.3.0"
+set -g SCRIPT_VERSION "2.3.1"
 
 # --- CONFIG FILE (env > file > defaults) ---
 # /etc/ccr-linksafe.conf, or $CCR_LINKSAFE_CONF. KEY=VALUE per line, '#' comments.
@@ -57,7 +64,12 @@ set -g SCRIPT_VERSION "2.3.0"
 if set -q CCR_LINKSAFE_CONF
     set -g CONF_FILE $CCR_LINKSAFE_CONF
 else
-    set -g CONF_FILE /etc/ccr-linksafe.conf
+    set -l script_dir (dirname (status filename))
+    if test -r $script_dir/ccr-linksafe.conf
+        set -g CONF_FILE $script_dir/ccr-linksafe.conf
+    else
+        set -g CONF_FILE /etc/ccr-linksafe.conf
+    end
 end
 if test -r $CONF_FILE
     for line in (string match -rv '^\s*(#|$)' < $CONF_FILE)
