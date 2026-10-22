@@ -31,6 +31,48 @@ credential is stored in the script) and a management path to the card that does 
 go through it (e.g. the onboard 10GbE). During the procedure the host is reachable on the
 control NIC only; if the host is unreachable, recovery is out-of-band (Intel AMT).
 
+### Configuration file (v2.3.0+)
+
+Host parameters are no longer hardcoded or exported by hand: put them in
+`/etc/ccr-linksafe.conf` (override the path with `CCR_LINKSAFE_CONF=/path/to/file`).
+Format is `KEY=VALUE`, one per line, `#` for comments, quotes optional.
+
+```sh
+# /etc/ccr-linksafe.conf
+CARD_IP=192.0.2.1          # management address of the card
+CARD_USER=ccr-admin            # RouterOS user
+CTRL_IF=mgmt0                  # NIC of the management path (must not depend on the card)
+GW=                           # gateway reachable via CTRL_IF; EMPTY = do not touch the default route
+ROOTPORT=00:06.0              # root port that hosts the card
+CARDPCI=0000:01:00            # card PCI address (first function)
+BRIDGE=vmbr0                  # bridge that carries the LAN
+BRIDGE_PORT=nic0              # bridge port towards the card
+CARD_IFS=nic0 nic1 nic2 nic3  # card interfaces on the host
+MTU=1600                      # must match RouterOS l2mtu (never lower)
+LOG=/var/log/ccr-linksafe-reboot.log
+```
+
+Precedence: command line (`--card-ip`, `--gw`) > environment > config file > built-in
+defaults. A variable already present in the environment is never overwritten by the file,
+so `CARD_IP=10.0.0.9 ./scripts/ccr-linksafe-reboot.ver.2.3.0.fish --dry` still wins.
+
+Two notes from real hosts:
+
+- **`GW=` empty is meaningful**: the script then leaves the default route alone. Use it
+  when the card itself is the gateway of the site and no independent gateway exists.
+- the card SSH **port is not a script parameter**. If RouterOS listens on a non-default
+  port (e.g. 444), map it in `~/.ssh/config` of the user that runs the script:
+
+```sh
+Host 192.0.2.1
+     HostName 192.0.2.1
+     User ccr-admin
+     Port 444
+     IdentityFile ~/.ssh/id_ed25519-git
+```
+
+A ready-to-edit copy ships as `examples/ccr-linksafe.conf.example`.
+
 Options, exit codes, log reference and remote-run notes:
 **[`docs/ccr-linksafe-reboot.md`](docs/ccr-linksafe-reboot.md)**.
 
