@@ -40,7 +40,7 @@ Nothing is touched until the whole preflight is green.
 
 ### Preflight
 - must run as root; checks for `setpci`, `ip`, `ssh`, `ping`, `timeout`, `awk`, `seq`;
-- the control NIC (`CTRL_IF`, default `nic3`) must exist **and have a link**
+- the control NIC (`CTRL_IF`, default `eth0`) must exist **and have a link**
   (`operstate=up`): it is the return path once the card's NICs go down;
 - the root port must answer `setpci -s <ROOTPORT> CAP_EXP+10.w`;
 - the card must be reachable **on the current path** before anything is changed.
@@ -69,7 +69,7 @@ The RouterOS package is downloaded **while the link is still up**, i.e. at zero 
 
 ### STEP 2 — quiesce the driver
 Detaches `nic0` from the bridge and sets **DOWN** every interface of the card
-(`nic0 nic1 nic2 nic5`). The `atl1c` driver stays loaded but idle.
+(`nic0 nic1 nic2 nic3`). The `atl1c` driver stays loaded but idle.
 This step is mandatory: removing PCI functions with an active driver = instant wedge.
 
 ### STEP 3 — remove the PCI functions
@@ -247,7 +247,7 @@ What happens then (≈8-12 minutes with both card reboots, no interaction):
 5. the host comes back on its normal management address; the log holds the `VERIFY:` block.
 
 While the procedure runs the host is reachable on the **control NIC** only, e.g.
-`192.168.97.85` (nic3, 10GbE). The normal management address (on `vmbr0`, over one of
+`198.51.100.85` (nic3, 10GbE). The normal management address (on `vmbr0`, over one of
 the card's ports) is **not** reachable until the final reboot.
 
 If the host is completely unreachable, the out-of-band path is Intel AMT
@@ -265,14 +265,14 @@ Every value has a default for this host and can be overridden without editing th
 | `CARD_IP` | `192.0.2.10` | card management IP (ether1, OOB LAN) |
 | `CARD_USER` | `admin` | RouterOS user (needs ssh + reboot + update rights) |
 | `PASSCMD` | *(empty)* | command that **prints** the password (e.g. `cat /root/.ccrpass`). Empty = ssh key |
-| `CTRL_IF` | `nic3` | host NIC used as control path — must **not** belong to the card |
+| `CTRL_IF` | `eth0` | host NIC used as control path — must **not** belong to the card |
 | `ROOTPORT` | `00:06.0` | PCI address of the root port above the card (`lspci -t`) |
 | `CARDPCI` | `0000:01:00` | PCI prefix of the card's 4 functions |
 | `BRIDGE` | `vmbr0` | bridge the main card port is attached to |
 | `BRIDGE_PORT` | `nic0` | card port attached to the bridge |
-| `CARD_IFS` | `nic0 nic1 nic2 nic5` | **all** card interfaces |
+| `CARD_IFS` | `nic0 nic1 nic2 nic3` | **all** card interfaces |
 | `MTU` | `1600` | MTU to restore (= RouterOS l2mtu) |
-| `LOG` | `/var/log/ccr-linksafe-reboot.log` | log file (same name as v1.7) |
+| `LOG` | `/var/log/ccr-linksafe-reboot.log` | log file (same name as v1.7). Pointing it next to the script keeps everything in one directory; then add a logrotate entry for the new path. |
 
 On another machine:
 

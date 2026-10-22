@@ -32,7 +32,9 @@ CARD_IFS=nic0 nic1 nic2 nic3
 # MTU for the card ports: match RouterOS l2mtu (default 1600), never lower.
 MTU=1600
 
-# Log file (appended).
+# Log file (appended). Default is /var/log/ccr-linksafe-reboot.log; pointing it
+# next to the script keeps the whole kit in one directory, e.g.
+# LOG=/root/ccr2004pcie/ccr-linksafe-reboot.log (add a logrotate entry for it).
 LOG=/var/log/ccr-linksafe-reboot.log
 
 # NOTE: the SSH port of the card is not a script parameter. If RouterOS listens on
