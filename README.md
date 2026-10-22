@@ -14,8 +14,9 @@ link-disable procedure: it quiesces `atl1c`, removes the PCI functions, disables
 **PCIe link on the root port**, reboots the card (optionally upgrading RouterOS and the
 RouterBOARD firmware), then restores the link, rescans and reboots the host. Host
 parameters come from a config file (see `examples/ccr-linksafe.conf.example`), the
-environment or the command line, in that order. The original **bash v1.7**
-(`scripts/ccr-linksafe-reboot`, validated 6/6) and **fish v2.2.1** are kept for reference.
+environment or the command line, in that order. This is the only implementation kept in
+the tree: the older **bash v1.7** (validated 6/6) and **fish v2.2.1** were removed in
+this release and remain available in the git history (`git show 0c1a939:scripts/...`).
 
 ```sh
 sudo ./scripts/ccr-linksafe-reboot.ver.2.3.0.fish --dry              # simulate, change nothing
@@ -39,9 +40,7 @@ This repository contains:
 |------|------|
 | `driver/patches/` | Kernel patch (`git format-patch`) fixing `skb_over_panic` on oversized RX frames |
 | `driver/atl1c-dkms-1.1/` | Full DKMS package: patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup) |
-| `scripts/ccr-linksafe-reboot` | Bash v1.7: safe reboot/upgrade procedure (link disabled on the root port) |
-| `scripts/ccr-linksafe-reboot.ver.2.2.1.fish` | Fish v2.2.1: previous release (kept for reference, no config file) |
-| `scripts/ccr-linksafe-reboot.ver.2.3.0.fish` | Fish v2.3.0 (**current**): same procedure + config file, `ssh -n` fix (SIGTTIN hang), DLActive bit fix |
+| `scripts/ccr-linksafe-reboot.ver.2.3.0.fish` | Fish v2.3.0 (**current, only implementation**): link-disable procedure + config file, `ssh -n` fix (SIGTTIN hang), DLActive bit fix |
 | `examples/ccr-linksafe.conf.example` | Parameter file for v2.3.0 (`/etc/ccr-linksafe.conf`) |
 | `docs/ccr-linksafe-reboot.md` | Manual (EN) for v2.3.0: options, config file, exit codes, reading the log, remote run |
 | `docs/CCR2004-PCIe-Report.md` | Full technical report: crash analysis, kernel logs, experiment matrix |

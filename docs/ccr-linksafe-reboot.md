@@ -2,7 +2,7 @@
 
 Reboot and upgrade the **MikroTik CCR2004-1G-2XS-PCIe** inside a **Proxmox VE** host
 with the **PCIe link disabled** for the whole duration of the card reset. This is the
-fish implementation of the validated bash v1.7 procedure, with the fixes that came out
+fish implementation of the validated link-disable procedure (originally bash v1.7), with the fixes that came out
 of reviewing the v2.1.0 rewrite.
 
 > Repository: [rimpianto/mikrotik.CCR2004-1G-2XS-PCIe](https://github.com/rimpianto/mikrotik.CCR2004-1G-2XS-PCIe).
@@ -410,6 +410,9 @@ After `--upgrade` the log also contains the `VERIFY:` block with the versions.
 
 ## 13. Differences from previous versions
 
+Historical comparison: v1.7 (bash) and the fish v2.1.0/v2.2.1 builds are **no longer in
+the tree** (removed in the v2.3.0 release); they remain reachable through the git history.
+
 | Aspect | v1.7 (bash) | v2.1.0 (fish) | **v2.2.1 (fish)** |
 |---|---|---|---|
 | Password | via `PASSCMD`, never hardcoded | **hardcoded** | **none**, ssh key only |
@@ -455,8 +458,7 @@ before comparing (an empty field right after the check is not "up to date").
 
 | Path | Role |
 |---|---|
-| `scripts/ccr-linksafe-reboot` | bash v1.7, original implementation (kept for reference) |
-| `scripts/ccr-linksafe-reboot.ver.2.3.0.fish` | this script |
+| `scripts/ccr-linksafe-reboot.ver.2.3.0.fish` | this script (only implementation in the tree) |
 | `docs/ccr-linksafe-reboot.md` | this manual |
 | `/var/log/ccr-linksafe-reboot.log` | append-only log, survives reboots |
 
