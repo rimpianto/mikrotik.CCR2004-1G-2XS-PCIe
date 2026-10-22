@@ -6,7 +6,7 @@
 # or point CCR_LINKSAFE_CONF at it).
 
 # Management address of the CCR2004 PCIe card (RouterOS ether1 / mgmt port).
-CARD_IP=192.0.2.1
+CARD_IP=192.0.2.10
 
 # SSH user on RouterOS.
 CARD_USER=ccr-admin
@@ -37,8 +37,8 @@ LOG=/var/log/ccr-linksafe-reboot.log
 # NOTE: the SSH port of the card is not a script parameter. If RouterOS listens on
 # a non-default port, map it in ~/.ssh/config of the user that runs the script:
 #
-#   Host 192.0.2.1
-#        HostName 192.0.2.1
+#   Host 192.0.2.10
+#        HostName 192.0.2.10
 #        User ccr-admin
-#        Port 444
+#        Port 22
 #        IdentityFile ~/.ssh/id_ed25519-git

@@ -191,7 +191,7 @@ While the procedure runs the host is reachable on the **control NIC** only, e.g.
 the card's ports) is **not** reachable until the final reboot.
 
 If the host is completely unreachable, the out-of-band path is Intel AMT
-(`192.0.2.153`, WS-Man 16993 / `amt-power cycle`, ~45 s), not the card's management
+(`192.0.2.11`, WS-Man 16993 / `amt-power cycle`, ~45 s), not the card's management
 address.
 
 ---
@@ -202,7 +202,7 @@ Every value has a default for this host and can be overridden without editing th
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `CARD_IP` | `192.0.2.148` | card management IP (ether1, OOB LAN) |
+| `CARD_IP` | `192.0.2.10` | card management IP (ether1, OOB LAN) |
 | `CARD_USER` | `admin` | RouterOS user (needs ssh + reboot + update rights) |
 | `PASSCMD` | *(empty)* | command that **prints** the password (e.g. `cat /root/.ccrpass`). Empty = ssh key |
 | `CTRL_IF` | `nic3` | host NIC used as control path — must **not** belong to the card |
@@ -230,7 +230,7 @@ The script **contains no credentials**. It uses the host's SSH key towards the c
 Verify once, before the first run:
 
 ```sh
-ssh -o BatchMode=yes -o StrictHostKeyChecking=no admin@192.0.2.148 ":put ready"
+ssh -o BatchMode=yes -o StrictHostKeyChecking=no admin@192.0.2.10 ":put ready"
 # must print: ready
 ```
 
@@ -238,9 +238,9 @@ If it does not work, install the key:
 
 ```sh
 ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519        # if missing
-scp /root/.ssh/id_ed25519.pub admin@192.0.2.148:key.pub
-ssh admin@192.0.2.148 "/user ssh-key import public-key-file=key.pub user=admin"
-ssh admin@192.0.2.148 "/file remove key.pub"
+scp /root/.ssh/id_ed25519.pub admin@192.0.2.10:key.pub
+ssh admin@192.0.2.10 "/user ssh-key import public-key-file=key.pub user=admin"
+ssh admin@192.0.2.10 "/file remove key.pub"
 ```
 
 > RouterOS 7.24: importing a key switches the default to
@@ -324,7 +324,7 @@ uptime                                  # is the host back?
 lspci -nn | grep -i 1969:1083           # the card's 4 AR8151 functions
 ip -br addr show vmbr0                  # management IP
 ip -br addr show nic3                   # control path
-ssh -o BatchMode=yes admin@192.0.2.148 "/system package update print; /system routerboard print"
+ssh -o BatchMode=yes admin@192.0.2.10 "/system package update print; /system routerboard print"
 ```
 
 After `--upgrade` the log also contains the `VERIFY:` block with the versions.

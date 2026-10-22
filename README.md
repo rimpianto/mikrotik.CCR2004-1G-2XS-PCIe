@@ -39,7 +39,7 @@ Format is `KEY=VALUE`, one per line, `#` for comments, quotes optional.
 
 ```sh
 # /etc/ccr-linksafe.conf
-CARD_IP=192.0.2.1          # management address of the card
+CARD_IP=192.0.2.10          # management address of the card
 CARD_USER=ccr-admin            # RouterOS user
 CTRL_IF=mgmt0                  # NIC of the management path (must not depend on the card)
 GW=                           # gateway reachable via CTRL_IF; EMPTY = do not touch the default route
@@ -64,10 +64,10 @@ Two notes from real hosts:
   port (e.g. 444), map it in `~/.ssh/config` of the user that runs the script:
 
 ```sh
-Host 192.0.2.1
-     HostName 192.0.2.1
+Host 192.0.2.10
+     HostName 192.0.2.10
      User ccr-admin
-     Port 444
+     Port 22
      IdentityFile ~/.ssh/id_ed25519-git
 ```
 
