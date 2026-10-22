@@ -11,7 +11,9 @@
 # CHANGES v2.3.1:
 #   F4  the config file is looked up next to the script first:
 #       <script dir>/ccr-linksafe.conf, then /etc/ccr-linksafe.conf.
-#       $CCR_LINKSAFE_CONF still overrides both. Keeping the parameters in
+#       $CCR_LINKSAFE_CONF still overrides both. The script path is resolved
+#       with realpath, so symlinks (e.g. /usr/local/bin/ccr-linksafe) are fine.
+#       Keeping the parameters in
 #       the same directory as the script (e.g. /root/ccr2004pcie/) means the
 #       whole kit travels together and nothing has to be exported by hand.
 #
@@ -64,7 +66,11 @@ set -g SCRIPT_VERSION "2.3.1"
 if set -q CCR_LINKSAFE_CONF
     set -g CONF_FILE $CCR_LINKSAFE_CONF
 else
-    set -l script_dir (dirname (status filename))
+    set -l script_file (status filename)
+    if command -q realpath
+        set script_file (realpath $script_file)
+    end
+    set -l script_dir (dirname $script_file)
     if test -r $script_dir/ccr-linksafe.conf
         set -g CONF_FILE $script_dir/ccr-linksafe.conf
     else

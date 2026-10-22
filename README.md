@@ -35,7 +35,8 @@ control NIC only; if the host is unreachable, recovery is out-of-band (Intel AMT
 
 Host parameters are no longer hardcoded or exported by hand. The script looks for the
 file **next to itself first** (`<script dir>/ccr-linksafe.conf`), then
-`/etc/ccr-linksafe.conf`; `CCR_LINKSAFE_CONF=/path/to/file` overrides both. Keeping the
+`/etc/ccr-linksafe.conf`; `CCR_LINKSAFE_CONF=/path/to/file` overrides both. The script path
+is resolved with `realpath`, so launching it through a symlink works. Keeping the
 file in the same directory as the script means the whole kit travels together
 (e.g. `/root/ccr2004pcie/`). Format is `KEY=VALUE`, one per line, `#` for comments, quotes
 optional.

@@ -433,7 +433,8 @@ the tree** (removed in the v2.3.0 release); they remain reachable through the gi
 
 - the config file is looked up **next to the script** first, then in `/etc`; `CCR_LINKSAFE_CONF`
   still wins. Keeps script and parameters in one directory (`/root/ccr2004pcie/`), with no
-  exported variables and no wrapper.
+  exported variables and no wrapper. The script resolves its own path with `realpath`, so a
+  symlink such as `/usr/local/bin/ccr-linksafe` still finds the config next to the real script.
 
 ### Changes in v2.3.0
 
