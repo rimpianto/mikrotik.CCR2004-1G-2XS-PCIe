@@ -1,4 +1,4 @@
-# ccr-linksafe-reboot.fish v2.3.1 — manual
+# ccr-linksafe-reboot.fish v2.3.2 — manual
 
 Reboot and upgrade the **MikroTik CCR2004-1G-2XS-PCIe** inside a **Proxmox VE** host
 with the **PCIe link disabled** for the whole duration of the card reset. This is the
@@ -154,13 +154,13 @@ Typical combinations:
 
 ```sh
 # lab, watching the log
-./scripts/ccr-linksafe-reboot.ver.2.3.1.fish
+./scripts/ccr-linksafe-reboot.ver.2.3.2.fish
 
 # lab, full RouterOS + firmware cycle
-./scripts/ccr-linksafe-reboot.ver.2.3.1.fish --upgrade
+./scripts/ccr-linksafe-reboot.ver.2.3.2.fish --upgrade
 
 # remote / WAN: launch, disconnect, everything comes back by itself
-nohup ./scripts/ccr-linksafe-reboot.ver.2.3.1.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
+nohup ./scripts/ccr-linksafe-reboot.ver.2.3.2.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
 exit
 ```
 
@@ -223,7 +223,7 @@ For any run where you may be disconnected, use `--auto` and detach it:
 
 ```sh
 # 1. launch it detached, so it survives the ssh session going away
-nohup /root/ccr-linksafe-reboot.ver.2.3.1.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
+nohup /root/ccr-linksafe-reboot.ver.2.3.2.fish --upgrade --auto </dev/null >/dev/null 2>&1 & disown
 
 # 2. follow the same run in the foreground: every step, live, until the host reboots
 touch /var/log/ccr-linksafe-reboot.log
@@ -277,7 +277,7 @@ Every value has a default for this host and can be overridden without editing th
 On another machine:
 
 ```sh
-CARD_IP=10.0.0.5 CTRL_IF=ens18 ROOTPORT=00:1c.0 ./scripts/ccr-linksafe-reboot.ver.2.3.1.fish --dry
+CARD_IP=10.0.0.5 CTRL_IF=ens18 ROOTPORT=00:1c.0 ./scripts/ccr-linksafe-reboot.ver.2.3.2.fish --dry
 ```
 
 ---
@@ -339,7 +339,7 @@ routes put back (if the quiesce has not happened yet), failsafe cancelled.
 
 ## 8. Reading the log
 
-Every line is `HH:MM:SS [v2.3.1] message` and is appended to `$LOG`.
+Every line is `HH:MM:SS [v2.3.2] message` and is appended to `$LOG`.
 
 | Line | Meaning |
 |---|---|
@@ -429,6 +429,12 @@ the tree** (removed in the v2.3.0 release); they remain reachable through the gi
 | Log | `/var/log/ccr-linksafe-reboot.log` | different name | same as v1.7 |
 | `--dry` | no | yes (not total) | yes, no change at all |
 
+### Changes in v2.3.2
+
+- built-in defaults are neutral placeholders: `192.0.2.10` (RFC 5737 documentation
+  address), `eth0`, `admin`. They must be overridden by the config file; with the defaults
+  untouched the preflight aborts before touching anything.
+
 ### Changes in v2.3.1
 
 - the config file is looked up **next to the script** first, then in `/etc`; `CCR_LINKSAFE_CONF`
@@ -470,7 +476,7 @@ before comparing (an empty field right after the check is not "up to date").
 
 | Path | Role |
 |---|---|
-| `scripts/ccr-linksafe-reboot.ver.2.3.1.fish` | this script (only implementation in the tree) |
+| `scripts/ccr-linksafe-reboot.ver.2.3.2.fish` | this script (only implementation in the tree) |
 | `docs/ccr-linksafe-reboot.md` | this manual |
 | `/var/log/ccr-linksafe-reboot.log` | append-only log, survives reboots |
 

@@ -1,12 +1,19 @@
 #!/usr/bin/env fish
 # ==============================================================================
 # SCRIPT NAME : ccr-linksafe-reboot.fish
-# VERSION     : 2.3.1
+# VERSION     : 2.3.2
 # DATE        : October 21, 2026
 # BASED ON    : bash v1.7 (validated 6/6) + fish v2.1.0
 # DESCRIPTION : Safe reboot / upgrade of a MikroTik CCR2004-1G-2XS-PCIe card.
 #               Disables the PCIe link on the host root port BEFORE the card
 #               resets, so the card's reset glitch cannot freeze the host.
+#
+# CHANGES v2.3.2:
+#   F5  the built-in defaults are neutral placeholders instead of one site's real
+#       values: documentation address 192.0.2.10 (RFC 5737), interface name
+#       eth0, generic 'admin' user. They are meant to be overridden by the
+#       config file; running with the defaults aborts at the preflight with a
+#       clear message instead of touching a real host.
 #
 # CHANGES v2.3.1:
 #   F4  the config file is looked up next to the script first:
@@ -58,7 +65,7 @@
 #       (a command that PRINTS the password — never the password itself).
 # ==============================================================================
 
-set -g SCRIPT_VERSION "2.3.1"
+set -g SCRIPT_VERSION "2.3.2"
 
 # --- CONFIG FILE (env > file > defaults) ---
 # /etc/ccr-linksafe.conf, or $CCR_LINKSAFE_CONF. KEY=VALUE per line, '#' comments.
@@ -92,15 +99,17 @@ if test -r $CONF_FILE
     end
 end
 
-# --- DEFAULT HARDWARE PARAMETERS (override with env vars) ---
-set -g CARD_IP (set -q CARD_IP; and echo $CARD_IP; or echo "192.0.2.148")
+# --- DEFAULTS (placeholders; override in the config file / environment / CLI) ---
+# CARD_IP uses the RFC 5737 documentation range on purpose: with the defaults
+# untouched the preflight aborts ("card unreachable"), so nothing real is hit.
+set -g CARD_IP (set -q CARD_IP; and echo $CARD_IP; or echo "192.0.2.10")
 set -g CARD_USER (set -q CARD_USER; and echo $CARD_USER; or echo "admin")
-set -g CTRL_IF (set -q CTRL_IF; and echo $CTRL_IF; or echo "nic3")
+set -g CTRL_IF (set -q CTRL_IF; and echo $CTRL_IF; or echo "eth0")
 set -g ROOTPORT (set -q ROOTPORT; and echo $ROOTPORT; or echo "00:06.0")
 set -g CARDPCI (set -q CARDPCI; and echo $CARDPCI; or echo "0000:01:00")
 set -g BRIDGE (set -q BRIDGE; and echo $BRIDGE; or echo "vmbr0")
 set -g BRIDGE_PORT (set -q BRIDGE_PORT; and echo $BRIDGE_PORT; or echo "nic0")
-set -g CARD_IFS (set -q CARD_IFS; and echo $CARD_IFS; or echo "nic0 nic1 nic2 nic5")
+set -g CARD_IFS (set -q CARD_IFS; and echo $CARD_IFS; or echo "nic0 nic1 nic2 nic3")
 set -g MTU (set -q MTU; and echo $MTU; or echo "1600")
 set -g LOG (set -q LOG; and echo $LOG; or echo "/var/log/ccr-linksafe-reboot.log")
 set -g CARD_MGT_NET "192.0.2.0/24"
