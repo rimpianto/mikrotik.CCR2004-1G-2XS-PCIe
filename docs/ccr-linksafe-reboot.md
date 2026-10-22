@@ -131,6 +131,19 @@ so explicitly instead of claiming a false success.
 - `--auto`: cancels the failsafe and issues `shutdown -r now` ("the host returns by itself");
 - otherwise: leaves the host alive and prints `run 'reboot' now`.
 
+The full log of a successful upgrade run (RouterOS 7.24.4 → 7.24.5 and firmware
+7.24.4 → 7.24.5, two card resets, host alive) is kept in
+[`logs/linksafe-upgrade-2026-10-22.log`](../logs/linksafe-upgrade-2026-10-22.log).
+Key points of that run:
+
+    21:40:35 STEP4 ok: PCIe link DISABLED (LnkSta=0x1083, DLActive=0)
+    21:40:41 STEP5 ok: card stopped answering — reboot confirmed
+    21:41:11 STEP5b: firmware upgrade pending (7.24.4 -> 7.24.5), ordering card reboot #2...
+    21:41:44 STEP6b ok: card back up after firmware apply
+    21:42:00 STEP7 ok: link UP (DLActive=1)
+    21:42:10 STEP8 ok: functions RE-ENUMERATED (hot retrain worked on this platform!)
+    21:42:10 DONE (AUTO): final warm reboot NOW, the host returns by itself
+
 > **Routes stay on `CTRL_IF` on purpose** when the procedure completes: `vmbr0` has no
 > ports until the reboot, so restoring the default route onto `vmbr0` would cut the only
 > management path. On abort paths **before** the quiesce the routes are restored to

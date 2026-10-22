@@ -1,0 +1,57 @@
+# ccr-linksafe-reboot v2.3.2 — successful RouterOS + firmware upgrade
+# Host: Proxmox VE 9.2.21, kernel 7.0.14-24-pve, Minisforum MS-02 Ultra
+# Card: CCR2004-1G-2XS-PCIe, 7.24.4 -> 7.24.5 (package) and 7.24.4 -> 7.24.5 (firmware)
+# Command: nohup ccr-linksafe --upgrade --auto </dev/null >/dev/null 2>&1 & disown
+# Duration: 21:40:13 -> 21:42:10 (117 s) + warm host reboot
+# Result: two card resets, link re-enabled, functions re-enumerated (STEP8 ok),
+#         host rebooted on purpose at the end; no crash, no DMAR wedge.
+# Note: management addresses and the card serial are redacted (192.0.2.x = RFC 5737).
+
+21:40:13 [v2.3.2] Starting. card=192.0.2.10 gw= ctrl_if=eno7 rootport=00:06.0 mode=RouterOS+firmware upgrade, AUTO
+21:40:13 [v2.3.2] Preflight: LnkCtl(00:06.0) = 0x0c40
+21:40:14 [v2.3.2] Preflight: card 192.0.2.10 reachable
+21:40:14 [v2.3.2] PHASE A: checking RouterOS updates (link still up)...
+21:40:19 [v2.3.2] PHASE A: update 7.24.4 -> 7.24.5 available, downloading (zero downtime)...
+21:40:28 [v2.3.2] PHASE A: package downloaded and staged (7.24.4 -> 7.24.5)
+21:40:28 [v2.3.2] STEP1: ssh client source = '192.0.2.2', control NIC eno7 (up)
+21:40:28 [v2.3.2] STEP1 ok: client route via eno7 verified
+21:40:29 [v2.3.2] STEP1 ok: card still reachable through the new path
+21:40:29 [v2.3.2] STEP1-failsafe: +30 min host reboot armed
+21:40:29 [v2.3.2] STEP2 ok: nic0 detached from vmbr0, card interfaces DOWN
+21:40:32 [v2.3.2] STEP3: function 0000:01:00.0 removed
+21:40:32 [v2.3.2] STEP3: function 0000:01:00.1 removed
+21:40:32 [v2.3.2] STEP3: function 0000:01:00.2 removed
+21:40:32 [v2.3.2] STEP3: function 0000:01:00.3 removed
+21:40:32 [v2.3.2] STEP4: LnkCtl(00:06.0) before = 0x0c40
+21:40:35 [v2.3.2] STEP4 ok: PCIe link DISABLED (LnkSta=0x1083, DLActive=0)
+21:40:35 [v2.3.2] STEP5: ordering package update install (card reboot #1: RouterOS)...
+21:40:41 [v2.3.2] STEP5 ok: card stopped answering — reboot confirmed
+21:40:41 [v2.3.2] STEP6: waiting for card boot #1...
+21:41:09 [v2.3.2] STEP6 ok: card back up
+21:41:09 [v2.3.2] STEP5b: staging firmware (/system routerboard upgrade)...
+21:41:11 [v2.3.2] STEP5b: firmware current=7.24.4 upgrade=7.24.5
+21:41:11 [v2.3.2] STEP5b: firmware upgrade pending (7.24.4 -> 7.24.5), ordering card reboot #2...
+21:41:16 [v2.3.2] STEP5b ok: card stopped answering — firmware reboot confirmed
+21:41:16 [v2.3.2] STEP6b: waiting for boot #2 (firmware apply, slower)...
+21:41:44 [v2.3.2] STEP6b ok: card back up after firmware apply
+21:41:44 [v2.3.2] VERIFY: installed RouterOS + firmware:
+            channel: stable
+               mode: https
+  check-certificate: yes
+         ip-version: auto
+  installed-version: 7.24.5
+
+       routerboard: yes
+             model: CCR2004-1G-2XS-PCIe
+     serial-number: HG909WF3xxx [redacted]
+     firmware-type: al64
+  minimum-firmware: 7.12.2
+  current-firmware: 7.24.5
+  upgrade-firmware: 7.24.5
+
+21:41:55 [v2.3.2] STEP7: LnkDisable cleared, waiting for retrain...
+21:42:00 [v2.3.2] STEP7 ok: link UP (DLActive=1)
+21:42:10 [v2.3.2] STEP8 ok: functions RE-ENUMERATED (hot retrain worked on this platform!)
+21:42:10 [v2.3.2] STEP9: nic0 re-attached to vmbr0 (mtu 1600)
+21:42:10 [v2.3.2] ROUTES: left on eno7 on purpose (vmbr0 has no ports until the warm reboot)
+21:42:10 [v2.3.2] DONE (AUTO): final warm reboot NOW, the host returns by itself

@@ -78,6 +78,10 @@ Host 192.0.2.10
 A ready-to-edit copy ships as `examples/ccr-linksafe.conf.example`; copy it next to
 the script as `ccr-linksafe.conf`.
 
+A real successful run — RouterOS **7.24.4 → 7.24.5** plus RouterBOARD firmware
+**7.24.4 → 7.24.5**, two card resets with the host staying alive — is in
+[`logs/linksafe-upgrade-2026-10-22.log`](logs/linksafe-upgrade-2026-10-22.log).
+
 Options, exit codes, log reference and remote-run notes:
 **[`docs/ccr-linksafe-reboot.md`](docs/ccr-linksafe-reboot.md)**.
 
