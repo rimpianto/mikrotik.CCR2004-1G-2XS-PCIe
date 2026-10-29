@@ -31,6 +31,10 @@ credential is stored in the script) and a management path to the card that does 
 go through it (e.g. the onboard 10GbE). During the procedure the host is reachable on the
 control NIC only; if the host is unreachable, recovery is out-of-band (Intel AMT).
 
+**First time here?** Follow **[Getting started with `ccr-linksafe-reboot`](docs/getting-started.md)**
+for installation, host discovery, configuration, SSH setup, a dry run, and the first
+attended run.
+
 ### Configuration file (v2.3.0+)
 
 Host parameters are no longer hardcoded or exported by hand. The script looks for the
