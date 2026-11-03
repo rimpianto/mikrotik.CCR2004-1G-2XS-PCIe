@@ -182,6 +182,22 @@ iface nic3 inet dhcp
 3. The card-side driver (mentioned as "under NDA") should handle reset
    without spewing DMA onto the bus.
 
+## Upstream submission status (2026-11-03)
+
+- The TX soft-lockup fix is upstream as `36c2009d90f2`.
+- The minimal oversized-RX bounds check was accepted in `netdev/net` as
+  `c4ba1716853d` (`net: atl1c: drop oversized RX frames instead of
+  panicking`). The original broader submission is retained in
+  `driver/patches/` for reference.
+- The separate RX error-descriptor buffer-leak fix was submitted as v3:
+  https://lore.kernel.org/all/20261103225218.19206-1-federico@rimpianto.com/
+  Its W=1 + Sparse baseline/patched builds succeeded, checkpatch reported
+  no findings and no new Sparse warnings were introduced. No hardware
+  runtime test has yet been performed for this specific fix.
+
+The detailed status, including the Sashiko review response and the DKMS
+1.1 scope, is maintained in `docs/atl1c-upstream-status.md`.
+
 ## References
 
 - MikroTik forum thread: "CCR2004-1G-2XS-PCIe: Impossible to update

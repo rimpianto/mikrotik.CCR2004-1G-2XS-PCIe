@@ -3,6 +3,11 @@
 DKMS package fixing a soft-lockup in the `atl1c` driver when a CCR2004 PCIe
 card reboots and flaps the link.
 
+This 1.1 source snapshot predates the v3 RX error-descriptor buffer-leak
+fix submitted to netdev on 2026-11-03. See
+`docs/atl1c-upstream-status.md` and `driver/patches/` for that separate
+patch and its verification status.
+
 You will need a second connection to the host machine through a different
 interface.
 

@@ -93,11 +93,12 @@ This repository contains:
 
 | Path | What |
 |------|------|
-| `driver/patches/` | Kernel patch (`git format-patch`) fixing `skb_over_panic` on oversized RX frames |
-| `driver/atl1c-dkms-1.1/` | Full DKMS package: patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup) |
+| `driver/patches/` | Original oversized-RX submission and the v3 patch fixing RX error-descriptor buffer leaks |
+| `driver/atl1c-dkms-1.1/` | Full DKMS package: patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup; predates the RX leak v3) |
 | `scripts/ccr-linksafe-reboot.ver.2.3.2.fish` | Fish v2.3.0 (**current, only implementation**): link-disable procedure + config file, `ssh -n` fix (SIGTTIN hang), DLActive bit fix |
 | `examples/ccr-linksafe.conf.example` | Parameter file for v2.3.0 (`/etc/ccr-linksafe.conf`) |
 | `docs/ccr-linksafe-reboot.md` | Manual (EN) for v2.3.0: options, config file, exit codes, reading the log, remote run |
+| `docs/atl1c-upstream-status.md` | Accepted upstream commits, pending submissions and verification status |
 | `docs/CCR2004-PCIe-Report.md` | Full technical report: crash analysis, kernel logs, experiment matrix |
 | `logs/` | Raw evidence: kernel journals and procedure logs from the crash experiments |
 
@@ -108,15 +109,28 @@ This repository contains:
    Fixed upstream by commit `36c2009d90f2` (included in our DKMS package).
 2. **`skb_over_panic` on RX** — RouterOS defaults to `l2mtu 1600`; a host
    at MTU 1500 allocates ~1522-byte skbs; `skb_put()` of a 1600-byte frame
-   panics the host. Fixed by our patch: RX buffers sized for full frame
-   overhead (`ETH_HLEN + VLAN_HLEN + ETH_FCS_LEN + NET_IP_ALIGN`),
-   descriptor length validated against `skb_tailroom()` before `skb_put()`,
-   oversized/corrupt frames dropped and counted instead of panicking.
+   panics the host. The minimal bounds-check fix is now accepted in
+   `netdev/net` as commit `c4ba1716853d`: oversized or corrupt frames are
+   dropped and counted instead of panicking. The original broader patch
+   remains in `driver/patches/` for reference.
 3. **Card-side reset misbehaviour (NOT fixable from Linux)** — on reset
    the card issues DMA writes to bogus addresses (IOMMU fault reason 0x71,
    e.g. `0xff3a6000`), wedging the VT-d DMAR: every NIC in the host loses
    DMA until reboot, and the card does not re-enumerate on PCI rescan.
    Track with MikroTik (SUP-223678).
+
+## Additional atl1c fix: RX error-descriptor buffer leak
+
+A separate issue in the RX error path recycled RFD slots without unmapping
+and freeing their buffers. The v3 fix was submitted to netdev on
+2026-11-03 and is included verbatim in `driver/patches/`. It addresses the
+Sashiko review findings on endian decoding, multi-RFD errors, stale RRDs
+after reset and RX refill accounting. W=1 + Sparse builds and checkpatch
+passed; hardware runtime testing is still pending.
+
+See **[atl1c upstream patch status](docs/atl1c-upstream-status.md)** for
+the submission link, verification details and the explicit distinction
+between accepted upstream changes and the older DKMS 1.1 package.
 
 ## Quick start
 
