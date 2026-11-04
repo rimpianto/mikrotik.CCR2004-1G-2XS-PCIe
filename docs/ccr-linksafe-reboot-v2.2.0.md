@@ -23,7 +23,7 @@ the **LnkDisable** bit (LnkCtl, bit 4) on the root port. With the link disabled 
 card can glitch as much as it wants: nothing is attached to disturb.
 
 ```
-  CPU ── root port 00:06.0 ═══ LINK ═══ CCR2004 card (4x AR8151)
+  CPU ── root port 00:06.0 ═══ LINK ═══ CCR2004 card (4x emulated AR8151)
                              ↑
                 LnkDisable=1 → link DOWN while the card resets
 ```
@@ -321,7 +321,7 @@ First use on a new machine: `--dry`, then a run without `--auto` while watching 
 
 ```sh
 uptime                                  # is the host back?
-lspci -nn | grep -i 1969:1083           # the card's 4 AR8151 functions
+lspci -nn | grep -i 1969:1083           # the card's 4 emulated AR8151 functions
 ip -br addr show vmbr0                  # management IP
 ip -br addr show nic3                   # control path
 ssh -o BatchMode=yes admin@192.0.2.10 "/system package update print; /system routerboard print"

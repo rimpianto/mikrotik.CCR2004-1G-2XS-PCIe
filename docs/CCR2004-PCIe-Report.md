@@ -8,8 +8,9 @@
 
 - **Host**: Minisforum MS-02 Ultra (Intel Core Ultra 9 285HX), Proxmox VE 9.2,
   kernel 7.0.14-19-pve
-- **Card**: MikroTik CCR2004-1G-2XS-PCIe (4x AR8151, PCI 01:00.0-3, Linux
-  driver `atl1c`)
+- **Card**: MikroTik CCR2004-1G-2XS-PCIe. Its SoC emulates four AR8151
+  v2.0 PCIe Ethernet functions `[1969:1083]` at PCI 01:00.0-3, using the
+  Linux `atl1c` driver; they are not discrete AR8151 controllers
 - **Host networking**: vmbr0 with bridge port nic0 (= sfp28-1 of the card);
   IOMMU/VT-d enabled; independent out-of-band paths = onboard RTL8127 10GbE
   (`r8127` DKMS) and Intel AMT (I226-LM, WS-Man 16993)

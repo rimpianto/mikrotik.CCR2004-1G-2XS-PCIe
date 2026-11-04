@@ -6,6 +6,20 @@ This page tracks the upstream status of the `atl1c` fixes related to the
 CCR2004-1G-2XS-PCIe work. It distinguishes accepted changes from patches
 still under review and from the local DKMS package.
 
+## Hardware interface note
+
+The CCR2004-1G-2XS-PCIe does not contain four discrete AR8151 controllers.
+Its SoC exposes four virtual PCIe Ethernet functions identifying as
+AR8151 v2.0 `[1969:1083]`, which the host drives with `atl1c`. Testing on
+this card therefore exercises MikroTik's emulated implementation and is
+not a substitute for testing on a physical AR8151 NIC.
+
+MikroTik documents the four virtual interfaces in the product description:
+https://mikrotik.com/product/ccr2004_1g_2xs_pcie
+
+Historical patch text using the shorthand "4x AR8151" refers to these
+emulated functions; submitted patch files are retained verbatim.
+
 ## Accepted upstream
 
 ### TX soft lockup

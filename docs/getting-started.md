@@ -64,7 +64,7 @@ ip -br addr
 ip -4 route show
 bridge link
 
-# The four Atheros AR8151 functions and the PCI topology
+# The four emulated Atheros AR8151 functions and the PCI topology
 lspci -nn -d 1969:1083
 lspci -t
 
