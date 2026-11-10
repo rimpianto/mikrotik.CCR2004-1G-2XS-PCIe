@@ -1,6 +1,6 @@
 # atl1c upstream patch status
 
-Last updated: 2026-11-03.
+Last updated: 2026-11-11.
 
 This page tracks the upstream status of the `atl1c` fixes related to the
 CCR2004-1G-2XS-PCIe work. It distinguishes accepted changes from patches
@@ -39,6 +39,21 @@ The original, broader submission remains in
 `driver/patches/0001-net-atl1c-fix-skb_over_panic-on-oversized-RX-frames.patch`
 for reference. The accepted upstream change is intentionally smaller than
 that original patch.
+
+### Backport to 5.10-stable
+
+Sasha Levin reported that the upstream commit does not apply to the
+5.10-stable tree: it uses `dev_core_stats_rx_dropped_inc()` (introduced
+in v5.16) and `kfree_skb_reason()`/`SKB_DROP_REASON_PKT_TOO_BIG`
+(introduced in v5.17), and `work_done` is a `int *` in
+`atl1c_clean_rx_irq()` there. A backport replacing those with
+`netdev->stats.rx_dropped++`, `dev_kfree_skb_any()` and `(*work_done)++`
+was submitted to `stable@vger.kernel.org` on 2026-11-11:
+
+https://lore.kernel.org/stable/20261110233836.64643-1-federico@rimpianto.com/
+
+The drop count does not survive `atl1c_get_stats()` overwriting it, but
+the panic is fixed.
 
 ## Submitted, pending review
 
