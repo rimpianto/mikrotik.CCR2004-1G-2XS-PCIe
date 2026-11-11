@@ -40,20 +40,47 @@ The original, broader submission remains in
 for reference. The accepted upstream change is intentionally smaller than
 that original patch.
 
-### Backport to 5.10-stable
+### Backports to 5.10-stable and 5.15-stable
 
-Sasha Levin reported that the upstream commit does not apply to the
-5.10-stable tree: it uses `dev_core_stats_rx_dropped_inc()` (introduced
-in v5.16) and `kfree_skb_reason()`/`SKB_DROP_REASON_PKT_TOO_BIG`
-(introduced in v5.17), and `work_done` is a `int *` in
-`atl1c_clean_rx_irq()` there. A backport replacing those with
-`netdev->stats.rx_dropped++`, `dev_kfree_skb_any()` and `(*work_done)++`
-was submitted to `stable@vger.kernel.org` on 2026-11-11:
+The 6.1, 6.6, 6.12, 6.18 and 7.3 stable queues carry the upstream commit.
+Sasha Levin reported that it does not apply to the 5.10-stable and
+5.15-stable trees. The hunk lands in both, but the result does not build:
+neither tree has `dev_core_stats_rx_dropped_inc()` or
+`SKB_DROP_REASON_PKT_TOO_BIG`, and 5.10 also lacks `kfree_skb_reason()`.
+
+Backports for both trees were submitted to `stable@vger.kernel.org` on
+2026-11-11, each as a reply to the corresponding failure report:
+
+- 5.10.y, version 2:
+  https://lore.kernel.org/stable/20261111042846.78846-1-federico@rimpianto.com/
+- 5.15.y:
+  https://lore.kernel.org/stable/20261111042847.78866-1-federico@rimpianto.com/
+
+Both count the drop with `atomic_long_inc(&netdev->rx_dropped)`, the
+counter that `dev_core_stats` later replaced and that `dev_get_stats()`
+adds to the values returned by `atl1c_get_stats()`, and free the frame
+with `kfree_skb()`.
+
+The 5.10 backport differs further because the receive loop there is still
+`atl1c_clean_rx_irq()`: `work_done` is an `int *`, and the refill at the
+end of the poll is gated on a separate local `count`, so the drop path
+increments both. 5.10 also lacks the 64-byte RX slack added by commit
+`86565682e905` (`atl1c: Work around the DMA RX overflow issue`), so the
+code comment is reworded.
+
+Version 2 of the 5.10 backport supersedes the first submission:
 
 https://lore.kernel.org/stable/20261110233836.64643-1-federico@rimpianto.com/
 
-The drop count does not survive `atl1c_get_stats()` overwriting it, but
-the panic is fixed.
+That version incremented only `work_done`. A poll that saw only dropped
+frames did not refill the ring, so sustained oversized traffic could still
+stop RX. It also counted the drop in `netdev->stats.rx_dropped`, which
+`atl1c_get_stats()` overwrites on every read.
+
+Both backports were build-tested on x86_64 (`defconfig` with
+`CONFIG_ATL1C=m`, W=1 and Sparse) against 5.10.274 and 5.15.225, with no
+new warnings. Neither has been run on hardware, and neither had been
+queued when this page was last updated.
 
 ## Submitted, pending review
 
