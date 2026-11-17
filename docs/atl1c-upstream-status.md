@@ -1,6 +1,6 @@
 # atl1c upstream patch status
 
-Last updated: 2026-11-11.
+Last updated: 2026-11-17.
 
 This page tracks the upstream status of the `atl1c` fixes related to the
 CCR2004-1G-2XS-PCIe work. It distinguishes accepted changes from patches
@@ -79,8 +79,19 @@ stop RX. It also counted the drop in `netdev->stats.rx_dropped`, which
 
 Both backports were build-tested on x86_64 (`defconfig` with
 `CONFIG_ATL1C=m`, W=1 and Sparse) against 5.10.274 and 5.15.225, with no
-new warnings. Neither has been run on hardware, and neither had been
-queued when this page was last updated.
+new warnings. Neither has been run on hardware.
+
+**Queued (updated 2026-11-17).** Sasha Levin acked both backports on
+2026-11-11 ("Queued for 5.15 and 5.10, thanks." —
+https://lore.kernel.org/stable/20261111042846.78846-1-federico@rimpianto.com/T/).
+`stable-queue` was re-checked on 2026-11-16/17: `queue-5.10` and
+`queue-5.15` contain
+`net-atl1c-drop-oversized-rx-frames-instead-of-panick.patch` (the 5.10
+copy with `(*work_done)++` and `count++`, the 5.15 copy with
+`work_done++`), as do the 6.1, 6.6, 6.12, 6.18 and 7.3 queues for the
+mainline commit. No release ships the fix yet: the newest tags at the
+time of writing are 5.10.274, 5.15.225, 6.1.192, 6.6.162, 6.12.117,
+6.18.63 and 7.3.4 (-rc1 exists for 6.12.118, 6.18.64 and 7.3.5).
 
 ## Submitted, pending review
 
@@ -113,6 +124,58 @@ The Sashiko response marking v2 as changes-requested is archived at:
 
 https://lore.kernel.org/all/20261103225321.19288-1-federico@rimpianto.com/
 
+### v4 (prepared, not yet submitted as of 2026-11-17)
+
+Patchwork tracks v3 as `changes-requested` (id 14942144) after a further
+Sashiko review of 2026-11-08 whose main finding is that the error path
+consumes the device-written `rfd_index` (12 bits, ring holds 512) and
+`rfd_num` without validating them, and that the link-down ring reset is
+not serialized against in-flight RX polls.
+
+A v4 series of two patches is prepared against `netdev/net` (aa40afa831eb)
+and fully verified (W=1 + Sparse + `checkpatch --strict`):
+
+- **1/2** — after `netif_carrier_off()`, the link-down work item waits
+  for in-flight RX polls before touching the rings. Deliberately *not*
+  via `napi_disable()`: the work item is not serialized against
+  `atl1c_down()`, and a second `napi_disable()` sleeps holding the netdev
+  instance lock, deadlocking the first caller's `napi_enable()`.
+- **2/2** — before acting on an RRD, validate `rfd_num == 1`,
+  `rfd_index == rfd_ring->next_to_clean` and that the slot holds a skb;
+  on mismatch touch no buffer and schedule `ATL1C_WORK_EVENT_RESET`
+  (the pattern `alx_clean_rx_irq()` uses). The error path unmaps and
+  frees. The ring reset also clears the RRD ring (1.1 clears only the
+  RFD ring).
+
+Submission awaits the reply to the Sashiko review (`pw-bot: cr`) and is
+done only with the maintainer's explicit go-ahead.
+
+## Hardware validation (2026-11-16/17, CCR2004-1G-2XS-PCIe)
+
+The v4 candidate was validated on the actual card through instrumented
+DKMS test builds (0.4.1 → 0.4.4-b1: v4 plus counters, buffer poisoning,
+IOVA history and teardown snapshots — diagnostics only, never shipped):
+
+- 1.5 M+ RRDs validated per session with **zero** descriptor mismatches
+  across 15+ MTU-change resets and 4+2 GB traffic phases;
+- the link-down poll-wait of 1/2 never timed out and never deadlocked;
+- **zero Oops/WARNING/lockups on any v4-based build**, while the
+  production 1.1 driver (without v4) crashed the host on the eighth MTU
+  change of the same loop (see below — the crash trigger turned out to be
+  a device quirk, not the race v4 fixes);
+- stale-RRD counting showed the condition 2/2 guards against
+  (`RRS_RXD_UPDATED` left set at reset) never occurred in 11 resets.
+
+The campaign also identified a **separate, device-side fault**: around
+its spontaneous post-reset link-down the card sometimes DMA-writes a
+small frame at a wrong 128-byte-aligned offset *inside a posted RX
+buffer's own mapping*, without writing an RRD; when the write lands in
+the `skb_shared_info` the next free crashes the host (this is the
+2026-11-16 Oops). Full analysis, evidence and hypothesis testing:
+[atl1c-misplaced-dma-write.md](atl1c-misplaced-dma-write.md). It is
+mitigated in DKMS package 1.3 and is **not** part of the upstream
+submission.
+
 ## Verification of v3
 
 The patch was checked against `netdev/net`:
@@ -128,7 +191,13 @@ race are not addressed by this patch and require separate work.
 
 ## DKMS package status
 
-`driver/atl1c-dkms-1.1/` predates the RX error-descriptor leak v3 patch.
-Do not assume that installing DKMS version 1.1 includes this latest fix.
-The submitted patch above is provided separately until the DKMS source and
-version are updated and rebuilt.
+| version | status | contents |
+|---|---|---|
+| **1.3** (`driver/atl1c-dkms-1.3/`) | **current production** | 1.1 + RX shared-info guard against the misplaced device DMA write (corrupt skb leaked, logged, counted in `rx_shinfo_corrupt`) + module metadata (`MODULE_VERSION`, maintainer `MODULE_AUTHOR`, version in `ethtool -i`) |
+| 1.1 (`driver/atl1c-dkms-1.1/`) | superseded | upstream + MTU/rx-buffer handling + oversized-frame drop (`c4ba1716853d`) + tpd_cons fix (`36c2009d90f2`). **Exposed to the host-fatal GPF** when a misplaced write hits a shared info — upgrade to 1.3 |
+| 1.2 | retired, never published here | local build of the v3 leak fix; superseded by the v4 rework. Do not install |
+| 0.4.x | test builds, never published | instrumented diagnostics used for the 2026-11-16/17 hardware campaign (see `docs/atl1c-misplaced-dma-write.md`); version numbers deliberately below 1.1 so `dkms autoinstall` can never promote them |
+
+None of the packages above contains the v4 leak fix yet; it will land in
+a future package version once accepted upstream. The submitted v3 patch
+remains in `driver/patches/` for reference.

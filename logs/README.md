@@ -10,5 +10,6 @@ the crash experiments of Sep 26-27, 2026.
 | `journal-softlockup-boot.txt` | Kernel journal of an earlier boot cycle from the same experiment session (context: stock-vs-patched driver comparison). |
 | `ccr-safe-reboot.log` | Step-by-step log of the `ccr-safe-reboot` procedure — both executions: the interrupted one (00:28) and the complete one (00:32) showing remove OK, card reboot ordered, rescan failing to re-enumerate. |
 | `linksafe-upgrade-2026-10-22.log` | **Success case** on a production host: `ccr-linksafe-reboot v2.3.2 --upgrade --auto`, RouterOS 7.24.4 → 7.24.5 **and** RouterBOARD firmware 7.24.4 → 7.24.5. Two card resets with the PCIe link disabled, link restored, functions re-enumerated, warm host reboot at the end. 117 s, no crash, no DMAR wedge. Management addresses and serial redacted. |
+| `misplaced-dma-write-2026-11-17.txt` | Kernel-log excerpts of the instrumented-driver campaign (builds 0.4.3 / 0.4.4-b1, kernel 7.0.14-29-pve): the misplaced-write events with absolute IOVAs, the per-reset `epoch N ends` summaries, the DMAR faults and the counter deltas. See `docs/atl1c-misplaced-dma-write.md`. |
 
 Key excerpts are quoted in `docs/CCR2004-PCIe-Report.md`.

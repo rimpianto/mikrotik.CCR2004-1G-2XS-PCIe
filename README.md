@@ -96,14 +96,16 @@ This repository contains:
 
 | Path | What |
 |------|------|
+| `driver/atl1c-dkms-1.3/` | **Current production DKMS package**: 1.1 + RX shared-info guard against the card's misplaced DMA writes (host-crash mitigation, `rx_shinfo_corrupt` counter) + module metadata (`ethtool -i` version) |
+| `driver/atl1c-dkms-1.1/` | Previous DKMS package (superseded by 1.3): patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup; predates the RX leak v3/v4 work) |
 | `driver/patches/` | Original oversized-RX submission and the v3 patch fixing RX error-descriptor buffer leaks |
-| `driver/atl1c-dkms-1.1/` | Full DKMS package: patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup; predates the RX leak v3) |
 | `scripts/ccr-linksafe-reboot.ver.2.3.2.fish` | Fish v2.3.0 (**current, only implementation**): link-disable procedure + config file, `ssh -n` fix (SIGTTIN hang), DLActive bit fix |
 | `examples/ccr-linksafe.conf.example` | Parameter file for v2.3.0 (`/etc/ccr-linksafe.conf`) |
 | `docs/ccr-linksafe-reboot.md` | Manual (EN) for v2.3.0: options, config file, exit codes, reading the log, remote run |
-| `docs/atl1c-upstream-status.md` | Accepted upstream commits, pending submissions and verification status |
+| `docs/atl1c-upstream-status.md` | Accepted upstream commits, stable-queue state, pending submissions and verification status |
+| `docs/atl1c-misplaced-dma-write.md` | The card's misplaced-DMA-write quirk: symptoms, instrumented builds, evidence, hypothesis testing, mitigation in 1.3 |
 | `docs/CCR2004-PCIe-Report.md` | Full technical report: crash analysis, kernel logs, experiment matrix |
-| `logs/` | Raw evidence: kernel journals and procedure logs from the crash experiments |
+| `logs/` | Raw evidence: kernel journals and procedure logs from the crash experiments and the 2026-11 driver campaign |
 
 ## The three failure modes (short version)
 
@@ -116,40 +118,59 @@ This repository contains:
    `netdev/net` as commit `c4ba1716853d`: oversized or corrupt frames are
    dropped and counted instead of panicking. The original broader patch
    remains in `driver/patches/` for reference.
-3. **Card-side reset misbehaviour (NOT fixable from Linux)** — on reset
-   the card issues DMA writes to bogus addresses (IOMMU fault reason 0x71,
-   e.g. `0xff3a6000`), wedging the VT-d DMAR: every NIC in the host loses
-   DMA until reboot, and the card does not re-enumerate on PCI rescan.
-   Track with MikroTik (SUP-223678).
+3. **Card-side reset misbehaviour (NOT fixable from Linux)** — around
+   resets and the card's spontaneous link-downs the device issues DMA at
+   bogus addresses (IOMMU fault reason 0x71, e.g. `0xff3a6000`). The
+   September experiments showed VT-d DMAR wedges (every NIC in the host
+   loses DMA until reboot) and the card failing to re-enumerate on PCI
+   rescan. The November instrumented-driver campaign characterized the
+   write side: the card sometimes **misplaces a small frame at a
+   128-byte-aligned offset inside a posted RX buffer's own mapping** —
+   when the write lands in the skb shared info, the next free crashes
+   the host. Analysis and evidence:
+   [`docs/atl1c-misplaced-dma-write.md`](docs/atl1c-misplaced-dma-write.md).
+   **DKMS package 1.3 mitigates the crash** (corrupt skbs are leaked,
+   logged and counted instead of freed). Track with MikroTik
+   (SUP-223678).
 
 ## Additional atl1c fix: RX error-descriptor buffer leak
 
 A separate issue in the RX error path recycled RFD slots without unmapping
 and freeing their buffers. The v3 fix was submitted to netdev on
-2026-11-03 and is included verbatim in `driver/patches/`. It addresses the
-Sashiko review findings on endian decoding, multi-RFD errors, stale RRDs
-after reset and RX refill accounting. W=1 + Sparse builds and checkpatch
-passed; hardware runtime testing is still pending.
+2026-11-03 and is included verbatim in `driver/patches/`. After a further
+Sashiko review, a v4 series (descriptor validation + reset on mismatch,
+and serialization of the link-down ring reset against in-flight RX polls)
+is prepared and was **validated on this card** in November 2026 through
+instrumented test builds: 1.5 M+ descriptors validated with zero
+mismatches, zero Oops across 15+ reset cycles. Submission pending.
 
 See **[atl1c upstream patch status](docs/atl1c-upstream-status.md)** for
-the submission link, verification details and the explicit distinction
-between accepted upstream changes and the older DKMS 1.1 package.
+the submission links, verification details, the stable-queue state of the
+accepted oversized-RX fix, and the explicit distinction between accepted
+upstream changes and the local DKMS packages.
 
 ## Quick start
 
 ### Install the patched driver (DKMS)
 
 ```sh
-sudo dkms add driver/atl1c-dkms-1.1
-sudo dkms build atl1c-ccr2004fix/1.1
-sudo dkms install atl1c-ccr2004fix/1.1
-sudo modprobe -r atl1c && sudo modprobe atl1c    # see warning below
+sudo dkms add driver/atl1c-dkms-1.3
+sudo dkms build atl1c-ccr2004fix/1.3
+sudo dkms install atl1c-ccr2004fix/1.3
+sudo reboot        # load the new module with a reboot - see warning below
+ethtool -i <iface> # must show: version: 1.3
 ```
 
 > ⚠️ **Never unload/remove `atl1c` while the driver is active**
 > (interfaces up, port attached to a bridge): on this hardware it
-> wedges the kernel instantly. Take the interfaces down / detach them
-> from the bridge first. The `ccr-linksafe-reboot` procedure does this for you.
+> wedges the kernel instantly. Load a new build with a **reboot**, and
+> keep an out-of-band path (Intel AMT / a NIC on a different PCIe
+> device) available. The `ccr-linksafe-reboot` procedure quiesces
+> everything for you when the card itself must reboot.
+>
+> `dkms autoinstall` promotes the **highest** registered version at every
+> kernel upgrade: retire old or test versions with
+> `sudo dkms remove atl1c-ccr2004fix/<version> --all`.
 
 Then raise the host MTU to match RouterOS `l2mtu` (default 1600):
 

@@ -1,0 +1,81 @@
+# Misplaced DMA write - kernel log excerpts, pve-ms02ultra, 2026-11-17
+# Driver builds: atl1c-ccr2004fix 0.4.3 (instrumented) and 0.4.4-b1.
+# Kernel 7.0.14-29-pve, Intel IOMMU scalable mode, CCR2004-1G-2XS-PCIe
+# (emulated AR8151), RouterOS 7.24.5, l2mtu 1600, link 10000 Mbps.
+# Analysis: docs/atl1c-misplaced-dma-write.md
+
+== Build 0.4.3, MTU change 1600->1500, event at 09:08:47-51 ==
+# (map-time IOVA history was wrapped by the preceding 4 GB traffic phase:
+#  both rogue writes report iova_nomatch - ambiguous, motivated 0.4.4-b1)
+[Tue Nov 17 09:08:47 2026] atl1c 0000:01:00.0: diag: queue 0 epoch 1 ends: 511 posted, buffer iova 0x00000000fcc42f40-0x00000000fffcf158, rfd ring 0x00000000ffff0000+4096, rrd ring 0x00000000ffff1000+8192
+[Tue Nov 17 09:08:47 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 1 ends: 511 posted, buffer iova 0x00000000fcbcca00-0x00000000fffdc898, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 09:08:47 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 1 ends: 511 posted, buffer iova 0x00000000f4570b80-0x00000000fffdf698, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 09:08:47 2026] atl1c 0000:01:00.0: diag: queue 3 epoch 1 ends: 511 posted, buffer iova 0x00000000f4582a00-0x00000000fff5bf58, rfd ring 0x00000000ffff9000+4096, rrd ring 0x00000000ffffa000+8192
+[Tue Nov 17 09:08:47 2026] atl1c 0000:01:00.0: atl1c: nic0 NIC Link is Up<10000 Mbps Full Duplex>
+[Tue Nov 17 09:08:48 2026] DMAR: DRHD: handling fault status reg 3
+[Tue Nov 17 09:08:48 2026] DMAR: [DMA Read NO_PASID] Request device [01:00.0] fault addr 0xfffc9000 [fault reason 0x71] SM: Present bit in first-level paging entry is clear
+[Tue Nov 17 09:08:48 2026] atl1c 0000:01:00.0: atl1c: nic0 NIC Link is Down
+[Tue Nov 17 09:08:48 2026] atl1c 0000:01:00.0: diag: queue 0 epoch 2 ends: 511 posted, buffer iova 0x00000000f4588ec0-0x00000000fffcf2b8, rfd ring 0x00000000ffff0000+4096, rrd ring 0x00000000ffff1000+8192
+[Tue Nov 17 09:08:48 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 2 ends: 511 posted, buffer iova 0x00000000f4570e40-0x00000000fffdf5f8, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 09:08:48 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 2 ends: 511 posted, buffer iova 0x00000000fcbccd40-0x00000000fffd9df8, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 09:08:48 2026] atl1c 0000:01:00.0: diag: queue 2 slot 446: posted buffer written at 320-403, its frame area is 64-1591
+[Tue Nov 17 09:08:48 2026] atl1c 0000:01:00.0: diag: queue 3 epoch 2 ends: 511 posted, buffer iova 0x00000000fcbc4dc0-0x00000000fffdcb78, rfd ring 0x00000000ffff9000+4096, rrd ring 0x00000000ffffa000+8192
+[Tue Nov 17 09:08:48 2026] atl1c 0000:01:00.0: diag: queue 3 slot 499: posted buffer written at 704-787, its frame area is 64-1591
+[Tue Nov 17 09:08:51 2026] atl1c 0000:01:00.0: atl1c: nic0 NIC Link is Up<10000 Mbps Full Duplex>
+
+== Build 0.4.4-b1, MTU change 1600->1500, event at 10:04:15-20 ==
+# Teardown tables (511 posted IOVAs of each of the last 2 resets per queue)
+# found no match: stale_hit=0. Write is inside the buffer own mapping,
+# at data offset 1280 = 10 x 128.
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: diag: queue 0 epoch 1 ends: 511 posted, buffer iova 0x00000000fb1442c0-0x00000000fffde718, rfd ring 0x00000000ffff0000+4096, rrd ring 0x00000000ffff1000+8192
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 1 ends: 511 posted, buffer iova 0x00000000fb8baa00-0x00000000fff69058, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 1 ends: 511 posted, buffer iova 0x00000000fc7e6a80-0x00000000fffc1158, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: diag: queue 3 epoch 1 ends: 511 posted, buffer iova 0x00000000fb802a00-0x00000000fffa71d8, rfd ring 0x00000000ffff9000+4096, rrd ring 0x00000000ffffa000+8192
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: atl1c: nic0 NIC Link is Up<10000 Mbps Full Duplex>
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: atl1c: nic0 NIC Link is Down
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 0 epoch 2 ends: 511 posted, buffer iova 0x00000000fb802cc0-0x00000000fffab538, rfd ring 0x00000000ffff0000+4096, rrd ring 0x00000000ffff1000+8192
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 2 ends: 511 posted, buffer iova 0x00000000fb8eef40-0x00000000fffa74b8, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 1 slot 281: posted buffer written at 1344-1458, its frame area is 64-1591
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 1 slot 281: posted-buffer write wrote iova 0x00000000febe2a80-0x00000000febe2af2, own mapping 0x00000000febe2580+1528, epoch 2
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 2 ends: 511 posted, buffer iova 0x00000000fb130cc0-0x00000000fffc1538, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 3 epoch 2 ends: 511 posted, buffer iova 0x00000000fafb0cc0-0x00000000fff07638, rfd ring 0x00000000ffff9000+4096, rrd ring 0x00000000ffffa000+8192
+[Tue Nov 17 10:04:20 2026] atl1c 0000:01:00.0: atl1c: nic0 NIC Link is Up<10000 Mbps Full Duplex>
+
+== Build 0.4.4-b1, MTU changes 2 and 3: DMAR Read faults, no rogue write ==
+# change 2 (1500->1600)
+[Tue Nov 17 10:01:54 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 0 ends: 511 posted, buffer iova 0x00000000ffa05880-0x00000000ffcf1ed8, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:01:54 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 0 ends: 511 posted, buffer iova 0x00000000ff7180c0-0x00000000ffa04718, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 1 ends: 511 posted, buffer iova 0x00000000fb8baa00-0x00000000fff69058, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 1 ends: 511 posted, buffer iova 0x00000000fc7e6a80-0x00000000fffc1158, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 2 ends: 511 posted, buffer iova 0x00000000fb8eef40-0x00000000fffa74b8, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 2 ends: 511 posted, buffer iova 0x00000000fb130cc0-0x00000000fffc1538, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:10:42 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 3 ends: 511 posted, buffer iova 0x00000000faec8ec0-0x00000000fffd7438, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:10:42 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 3 ends: 511 posted, buffer iova 0x00000000faeaadc0-0x00000000fffd9f78, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:10:43 2026] DMAR: [DMA Read NO_PASID] Request device [01:00.0] fault addr 0xfe22c000 [fault reason 0x71] SM: Present bit in first-level paging entry is clear
+[Tue Nov 17 10:10:43 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 4 ends: 511 posted, buffer iova 0x00000000faf5ea80-0x00000000fffc7898, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:10:43 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 4 ends: 511 posted, buffer iova 0x00000000faeaaa00-0x00000000fffd9918, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+
+# change 3 (1600->1500)
+[Tue Nov 17 10:01:54 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 0 ends: 511 posted, buffer iova 0x00000000ffa05880-0x00000000ffcf1ed8, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:01:54 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 0 ends: 511 posted, buffer iova 0x00000000ff7180c0-0x00000000ffa04718, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 1 ends: 511 posted, buffer iova 0x00000000fb8baa00-0x00000000fff69058, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:04:15 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 1 ends: 511 posted, buffer iova 0x00000000fc7e6a80-0x00000000fffc1158, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 2 ends: 511 posted, buffer iova 0x00000000fb8eef40-0x00000000fffa74b8, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:04:17 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 2 ends: 511 posted, buffer iova 0x00000000fb130cc0-0x00000000fffc1538, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:10:42 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 3 ends: 511 posted, buffer iova 0x00000000faec8ec0-0x00000000fffd7438, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:10:42 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 3 ends: 511 posted, buffer iova 0x00000000faeaadc0-0x00000000fffd9f78, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:10:43 2026] DMAR: [DMA Read NO_PASID] Request device [01:00.0] fault addr 0xfe22c000 [fault reason 0x71] SM: Present bit in first-level paging entry is clear
+[Tue Nov 17 10:10:43 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 4 ends: 511 posted, buffer iova 0x00000000faf5ea80-0x00000000fffc7898, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:10:43 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 4 ends: 511 posted, buffer iova 0x00000000faeaaa00-0x00000000fffd9918, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:11:33 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 5 ends: 511 posted, buffer iova 0x00000000fae353c0-0x00000000fffc2718, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:11:33 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 5 ends: 511 posted, buffer iova 0x00000000fae2a3c0-0x00000000fffc6ed8, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+[Tue Nov 17 10:11:34 2026] DMAR: [DMA Read NO_PASID] Request device [01:00.0] fault addr 0xfec5a000 [fault reason 0x71] SM: Present bit in first-level paging entry is clear
+[Tue Nov 17 10:11:34 2026] atl1c 0000:01:00.0: diag: queue 1 epoch 6 ends: 511 posted, buffer iova 0x00000000fae26040-0x00000000fffb1bf8, rfd ring 0x00000000ffff3000+4096, rrd ring 0x00000000ffff4000+8192
+[Tue Nov 17 10:11:34 2026] atl1c 0000:01:00.0: diag: queue 2 epoch 6 ends: 511 posted, buffer iova 0x00000000fae2a600-0x00000000fffc6df8, rfd ring 0x00000000ffff6000+4096, rrd ring 0x00000000ffff7000+8192
+
+== Counter deltas across the 0.4.4-b1 session (snapshots 00/10/21/22/23) ==
+00-boot: rrd_ok=? rogue=? nomatch=? stale_hit=? stale_rrd=? reuse=? link_down=?
+10-traffic: rrd_ok=? rogue=? nomatch=? stale_hit=? stale_rrd=? reuse=? link_down=?
+21-mtu-1500: rrd_ok=? rogue=? nomatch=? stale_hit=? stale_rrd=? reuse=? link_down=?
+22-mtu-1600: rrd_ok=? rogue=? nomatch=? stale_hit=? stale_rrd=? reuse=? link_down=?
+23-mtu-1500: rrd_ok=? rogue=? nomatch=? stale_hit=? stale_rrd=? reuse=? link_down=?
