@@ -85,9 +85,9 @@ This repository contains:
 | `driver/atl1c-dkms-1.3/` | **Current production DKMS package**: 1.1 + RX shared-info guard against the card's misplaced DMA writes (host-crash mitigation, `rx_shinfo_corrupt` counter) + module metadata (`ethtool -i` version) |
 | `driver/atl1c-dkms-1.1/` | Previous DKMS package (superseded by 1.3): patched `atl1c` driver (also carries upstream fix `36c2009d90f2` for the tpd_cons soft-lockup; predates the RX leak v3/v4 work) |
 | `driver/patches/` | Original oversized-RX submission and the v3 patch fixing RX error-descriptor buffer leaks |
-| `scripts/ccr-linksafe-reboot.ver.2.3.2.fish` | Fish v2.3.0 (**current, only implementation**): link-disable procedure + config file, `ssh -n` fix (SIGTTIN hang), DLActive bit fix |
-| `examples/ccr-linksafe.conf.example` | Parameter file for v2.3.0 (`/etc/ccr-linksafe.conf`) |
-| `docs/ccr-linksafe-reboot.md` | Manual (EN) for v2.3.0: options, config file, exit codes, reading the log, remote run |
+| `scripts/ccr-linksafe-reboot.ver.2.3.2.fish` | Fish v2.3.2 (**current, only implementation**): link-disable procedure + config file, `ssh -n` fix (SIGTTIN hang), DLActive bit fix |
+| `examples/ccr-linksafe.conf.example` | Parameter file for v2.3.0+ (`/etc/ccr-linksafe.conf`) |
+| `docs/ccr-linksafe-reboot.md` | Manual (EN) for v2.3.2: options, config file, exit codes, reading the log, remote run |
 | `docs/mac-telnet-management.md` | Layer-2 management of the card without any IP: MAC-Telnet suite (`mndp`, `macping`, `mactelnet`) built from source on Debian/PVE, card discovery by MAC, console access — with real lab output |
 | `docs/atl1c-upstream-status.md` | Accepted upstream commits, stable-queue state, pending submissions and verification status |
 | `docs/atl1c-misplaced-dma-write.md` | The card's misplaced-DMA-write quirk: symptoms, instrumented builds, evidence, hypothesis testing, mitigation in 1.3 |
