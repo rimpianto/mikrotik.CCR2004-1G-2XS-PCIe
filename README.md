@@ -34,56 +34,39 @@ credential is stored in the script) and a management path to the card that does 
 go through it (e.g. the onboard 10GbE). During the procedure the host is reachable on the
 control NIC only; if the host is unreachable, recovery is out-of-band (Intel AMT).
 
-**First time here?** Follow **[Getting started with `ccr-linksafe-reboot`](docs/getting-started.md)**
-for installation, host discovery, configuration, SSH setup, a dry run, and the first
-attended run.
+**First time here?** The **[step-by-step guide](docs/getting-started.md)**
+walks you from zero to a completed upgrade: install, one-command discovery of
+every host value, configuration, SSH setup, dry run, first attended run,
+post-checks and troubleshooting. **Appendix A of the guide is a worked example
+for the Minisforum MS-02 Ultra lab host**, with a ready-to-paste configuration
+file.
 
 ### Configuration file (v2.3.0+)
 
-Host parameters are no longer hardcoded or exported by hand. The script looks for the
-file **next to itself first** (`<script dir>/ccr-linksafe.conf`), then
-`/etc/ccr-linksafe.conf`; `CCR_LINKSAFE_CONF=/path/to/file` overrides both. The script path
-is resolved with `realpath`, so launching it through a symlink works. Keeping the
-file in the same directory as the script means the whole kit travels together
-(e.g. `/root/ccr2004pcie/`). Format is `KEY=VALUE`, one per line, `#` for comments, quotes
-optional.
+Host parameters live in a `KEY=VALUE` file, looked up **next to the script
+first** (`<script dir>/ccr-linksafe.conf`), then `/etc/ccr-linksafe.conf`;
+`CCR_LINKSAFE_CONF=/path/to/file` overrides both. Precedence: command line
+(`--card-ip`, `--gw`) > environment > config file > built-in defaults (which
+are neutral placeholders — running without a config aborts at the preflight).
 
 ```sh
-# <script dir>/ccr-linksafe.conf (or /etc/ccr-linksafe.conf)
-CARD_IP=192.0.2.10          # management address of the card
-CARD_USER=ccr-admin            # RouterOS user
-CTRL_IF=mgmt0                  # NIC of the management path (must not depend on the card)
-GW=                           # gateway reachable via CTRL_IF; EMPTY = do not touch the default route
-ROOTPORT=00:06.0              # root port that hosts the card
-CARDPCI=0000:01:00            # card PCI address (first function)
-BRIDGE=vmbr0                  # bridge that carries the LAN
-BRIDGE_PORT=nic0              # bridge port towards the card
-CARD_IFS=nic0 nic1 nic2 nic3  # card interfaces on the host
-MTU=1600                      # must match RouterOS l2mtu (never lower)
+# <script dir>/ccr-linksafe.conf — values below are the MS-02 Ultra lab host
+CARD_IP=192.168.99.148      # RouterOS management address (reachable via CTRL_IF)
+CARD_USER=admin             # RouterOS user (ssh + reboot + update rights)
+CTRL_IF=nic3                # NIC of the management path (must not depend on the card)
+GW=                         # gateway reachable via CTRL_IF; EMPTY = do not touch the default route
+ROOTPORT=00:06.0            # PCIe root port that hosts the card
+CARDPCI=0000:01:00          # card PCI functions prefix (no trailing .N)
+BRIDGE=vmbr0                # bridge that carries the LAN
+BRIDGE_PORT=nic0            # bridge port towards the card
+CARD_IFS=nic0 nic1 nic2 nic5  # every card interface on the host
+MTU=1600                    # must match RouterOS l2mtu (never lower)
 LOG=/var/log/ccr-linksafe-reboot.log
 ```
 
-Precedence: command line (`--card-ip`, `--gw`) > environment > config file > built-in
-defaults. A variable already present in the environment is never overwritten by the file,
-so `CARD_IP=10.0.0.9 ./scripts/ccr-linksafe-reboot.ver.2.3.2.fish --dry` still wins.
-
-Two notes from real hosts:
-
-- **`GW=` empty is meaningful**: the script then leaves the default route alone. Use it
-  when the card itself is the gateway of the site and no independent gateway exists.
-- the card SSH **port is not a script parameter**. If RouterOS listens on a non-default
-  port (e.g. 444), map it in `~/.ssh/config` of the user that runs the script:
-
-```sh
-Host 192.0.2.10
-     HostName 192.0.2.10
-     User ccr-admin
-     Port 22
-     IdentityFile ~/.ssh/id_ed25519-git
-```
-
-A ready-to-edit copy ships as `examples/ccr-linksafe.conf.example`; copy it next to
-the script as `ccr-linksafe.conf`.
+How to discover each value on your own host, the SSH-key setup and the
+non-default-port case: **[step-by-step guide, Steps 2-4](docs/getting-started.md)**.
+A ready-to-edit template ships as `examples/ccr-linksafe.conf.example`.
 
 A real successful run — RouterOS **7.24.4 → 7.24.5** plus RouterBOARD firmware
 **7.24.4 → 7.24.5**, two card resets with the host staying alive — is in
