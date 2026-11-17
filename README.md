@@ -33,6 +33,9 @@ Requirements: root, `fish`, an **ssh key** from the host to the RouterOS user (n
 credential is stored in the script) and a management path to the card that does **not**
 go through it (e.g. the onboard 10GbE). During the procedure the host is reachable on the
 control NIC only; if the host is unreachable, recovery is out-of-band (Intel AMT).
+If the **card** loses its management IP instead, its RouterOS console is still reachable
+over Layer 2 (no IP needed) with the MAC-Telnet suite:
+**[docs/mac-telnet-management.md](docs/mac-telnet-management.md)**.
 
 **First time here?** The **[step-by-step guide](docs/getting-started.md)**
 walks you from zero to a completed upgrade: install, one-command discovery of
@@ -85,6 +88,7 @@ This repository contains:
 | `scripts/ccr-linksafe-reboot.ver.2.3.2.fish` | Fish v2.3.0 (**current, only implementation**): link-disable procedure + config file, `ssh -n` fix (SIGTTIN hang), DLActive bit fix |
 | `examples/ccr-linksafe.conf.example` | Parameter file for v2.3.0 (`/etc/ccr-linksafe.conf`) |
 | `docs/ccr-linksafe-reboot.md` | Manual (EN) for v2.3.0: options, config file, exit codes, reading the log, remote run |
+| `docs/mac-telnet-management.md` | Layer-2 management of the card without any IP: MAC-Telnet suite (`mndp`, `macping`, `mactelnet`) built from source on Debian/PVE, card discovery by MAC, console access — with real lab output |
 | `docs/atl1c-upstream-status.md` | Accepted upstream commits, stable-queue state, pending submissions and verification status |
 | `docs/atl1c-misplaced-dma-write.md` | The card's misplaced-DMA-write quirk: symptoms, instrumented builds, evidence, hypothesis testing, mitigation in 1.3 |
 | `docs/CCR2004-PCIe-Report.md` | Full technical report: crash analysis, kernel logs, experiment matrix |

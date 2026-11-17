@@ -327,6 +327,16 @@ ip -br link     # card interfaces back, bridge port attached
 For the complete option list, log reference and recovery details, see
 [the full manual](ccr-linksafe-reboot.md).
 
+### Card up but no usable IP: Layer-2 console (MAC-Telnet)
+
+If the card is running but its management IP is unusable (first configuration,
+DHCP loss, firewall lockout), its RouterOS is still reachable **by MAC address**
+with the MAC-Telnet suite: `mndp` discovers identity/MAC/version from the
+discovery broadcasts, `macping <MAC>` verifies Layer-2 reachability,
+`mactelnet <MAC> -u admin` opens a regular RouterOS console — no IP
+configuration needed. Build-from-source instructions for Debian/Proxmox VE and
+real lab output: **[MAC-Telnet management guide](mac-telnet-management.md)**.
+
 ---
 
 ## Appendix A — worked example: Minisforum MS-02 Ultra (`pve-ms02ultra`)
