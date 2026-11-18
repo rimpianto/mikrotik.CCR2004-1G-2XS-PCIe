@@ -1,6 +1,6 @@
 # atl1c upstream patch status
 
-Last updated: 2026-11-17.
+Last updated: 2026-11-18.
 
 This page tracks the upstream status of the `atl1c` fixes related to the
 CCR2004-1G-2XS-PCIe work. It distinguishes accepted changes from patches
@@ -81,17 +81,15 @@ Both backports were build-tested on x86_64 (`defconfig` with
 `CONFIG_ATL1C=m`, W=1 and Sparse) against 5.10.274 and 5.15.225, with no
 new warnings. Neither has been run on hardware.
 
-**Queued (updated 2026-11-17).** Sasha Levin acked both backports on
-2026-11-11 ("Queued for 5.15 and 5.10, thanks." —
+**Released in stable (updated 2026-11-18).** Sasha Levin acked both
+backports on 2026-11-11 ("Queued for 5.15 and 5.10, thanks." —
 https://lore.kernel.org/stable/20261111042846.78846-1-federico@rimpianto.com/T/).
-`stable-queue` was re-checked on 2026-11-16/17: `queue-5.10` and
-`queue-5.15` contain
-`net-atl1c-drop-oversized-rx-frames-instead-of-panick.patch` (the 5.10
-copy with `(*work_done)++` and `count++`, the 5.15 copy with
-`work_done++`), as do the 6.1, 6.6, 6.12, 6.18 and 7.3 queues for the
-mainline commit. No release ships the fix yet: the newest tags at the
-time of writing are 5.10.274, 5.15.225, 6.1.192, 6.6.162, 6.12.117,
-6.18.63 and 7.3.4 (-rc1 exists for 6.12.118, 6.18.64 and 7.3.5).
+The mainline commit shipped in the stable releases of 2026-11-17:
+**7.3.5, 6.18.64 and 6.12.118** (verified in the official kernel.org
+ChangeLogs; `Upstream commit c4ba1716853d`). The 6.6, 6.1, 5.15 and 5.10
+queues still carry the patch without a release yet (last releases of
+those branches predate the queueing: 6.6.162, 6.1.192, 5.15.225,
+5.10.274, all 2026-11-06).
 
 ## Submitted, pending review
 
@@ -124,16 +122,20 @@ The Sashiko response marking v2 as changes-requested is archived at:
 
 https://lore.kernel.org/all/20261103225321.19288-1-federico@rimpianto.com/
 
-### v4 (prepared, not yet submitted as of 2026-11-17)
+### v4 (submitted to netdev on 2026-11-17)
 
 Patchwork tracks v3 as `changes-requested` (id 14942144) after a further
 Sashiko review of 2026-11-08 whose main finding is that the error path
 consumes the device-written `rfd_index` (12 bits, ring holds 512) and
 `rfd_num` without validating them, and that the link-down ring reset is
-not serialized against in-flight RX polls.
+not serialized against in-flight RX polls. A point-by-point reply to that
+review was sent on the v3 thread on 2026-11-17.
 
-A v4 series of two patches is prepared against `netdev/net` (aa40afa831eb)
-and fully verified (W=1 + Sparse + `checkpatch --strict`):
+The v4 series of two patches, against `netdev/net` (aa40afa831eb), was
+submitted on 2026-11-17 22:55 UTC as patchwork series **1214336**
+(1/2 id 14994927, 2/2 id 14994926):
+
+https://lore.kernel.org/all/20261117225521.19689-1-federico@rimpianto.com/
 
 - **1/2** — after `netif_carrier_off()`, the link-down work item waits
   for in-flight RX polls before touching the rings. Deliberately *not*
@@ -147,8 +149,12 @@ and fully verified (W=1 + Sparse + `checkpatch --strict`):
   frees. The ring reset also clears the RRD ring (1.1 clears only the
   RFD ring).
 
-Submission awaits the reply to the Sashiko review (`pw-bot: cr`) and is
-done only with the maintainer's explicit go-ahead.
+Netdev CI on the submission is green on both patches (builds incl.
+32-bit, clang and clang+rust, allmodconfig, kdoc, verify-fixes,
+signed-off, series format); the only finding is a cosmetic checkpatch
+warning on 2/2 (one 84-column line in a debug printk). As of
+2026-11-18 the `sashiko-nipa` and contest checks are still pending and
+no review comments have arrived; both patches are in state `new`.
 
 ## Hardware validation (2026-11-16/17, CCR2004-1G-2XS-PCIe)
 
