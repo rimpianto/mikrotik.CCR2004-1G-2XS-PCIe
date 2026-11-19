@@ -1,6 +1,6 @@
 # atl1c upstream patch status
 
-Last updated: 2026-11-18.
+Last updated: 2026-11-19.
 
 This page tracks the upstream status of the `atl1c` fixes related to the
 CCR2004-1G-2XS-PCIe work. It distinguishes accepted changes from patches
@@ -81,15 +81,25 @@ Both backports were build-tested on x86_64 (`defconfig` with
 `CONFIG_ATL1C=m`, W=1 and Sparse) against 5.10.274 and 5.15.225, with no
 new warnings. Neither has been run on hardware.
 
-**Released in stable (updated 2026-11-18).** Sasha Levin acked both
+**Released / in review (updated 2026-11-19).** Sasha Levin acked both
 backports on 2026-11-11 ("Queued for 5.15 and 5.10, thanks." —
 https://lore.kernel.org/stable/20261111042846.78846-1-federico@rimpianto.com/T/).
 The mainline commit shipped in the stable releases of 2026-11-17:
 **7.3.5, 6.18.64 and 6.12.118** (verified in the official kernel.org
-ChangeLogs; `Upstream commit c4ba1716853d`). The 6.6, 6.1, 5.15 and 5.10
-queues still carry the patch without a release yet (last releases of
-those branches predate the queueing: 6.6.162, 6.1.192, 5.15.225,
-5.10.274, all 2026-11-06).
+ChangeLogs; `Upstream commit c4ba1716853d`).
+
+On 2026-11-18 Greg Kroah-Hartman posted the -rc1 review cycles for the
+four remaining branches, each carrying the patch; the -final releases
+follow the usual ~7-day review window (i.e. around 2026-11-25):
+
+- 6.6.163-rc1 (`[PATCH 6.6 1437/3318]`)
+- 6.1.193-rc1 (`[PATCH 6.1 1222/2857]`)
+- 5.15.226-rc1 (`[PATCH 5.15 0952/2214]`) — the backport submitted above
+- 5.10.275-rc1 (`[PATCH 5.10 0784/1848]`) — the backport submitted above
+
+6.6 and 6.1 queue the mainline commit unchanged (both trees have
+`dev_core_stats_rx_dropped_inc()` and `kfree_skb_reason()`); 5.15 and
+5.10 queue the adapted backports, with Sasha Levin's sign-off appended.
 
 ## Submitted, pending review
 
