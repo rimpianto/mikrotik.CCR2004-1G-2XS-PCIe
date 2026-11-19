@@ -118,7 +118,7 @@ This repository contains:
    [`docs/atl1c-misplaced-dma-write.md`](docs/atl1c-misplaced-dma-write.md).
    **DKMS package 1.3 mitigates the crash** (corrupt skbs are leaked,
    logged and counted instead of freed). Track with MikroTik
-   (SUP-223678).
+   (SUP-212687).
 
 ## Additional atl1c fix: RX error-descriptor buffer leak
 

@@ -121,7 +121,7 @@ Around its spontaneous post-reset link-down, the emulated AR8151
 sometimes misplaces a small-frame DMA write inside a posted RX buffer,
 at a 128-byte-aligned offset, without writing the completion descriptor.
 The bug is in the device (firmware/emulation). Follow up with MikroTik
-(existing ticket: SUP-223678).
+(existing ticket: SUP-212687).
 
 ## Mitigation: DKMS package 1.3
 

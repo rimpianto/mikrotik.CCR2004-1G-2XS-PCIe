@@ -172,7 +172,7 @@ iface nic3 inet dhcp
   functions with the driver active; upgrade the card only through the safe
   procedure, planning a subsequent host reboot.
 
-## Asks for MikroTik (ticket SUP-223678 / forum thread)
+## Asks for MikroTik (ticket SUP-212687 / forum thread)
 
 1. The card reset issues out-of-range DMA writes (IOMMU fault reason 0x71,
    addr 0xff...000): firmware needs fixing or the card side must quiesce
