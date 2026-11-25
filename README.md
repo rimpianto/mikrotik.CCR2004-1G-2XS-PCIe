@@ -121,21 +121,24 @@ This repository contains:
    logged and counted instead of freed). Track with MikroTik
    (SUP-212687).
 
-## Additional atl1c fix: RX error-descriptor buffer leak
+## Additional atl1c fixes: RX error-descriptor leak + remove-path UAF
 
 A separate issue in the RX error path recycled RFD slots without unmapping
-and freeing their buffers. The v3 fix was submitted to netdev on
-2026-11-03 and is included verbatim in `driver/patches/`. After a further
-Sashiko review, a v4 series (descriptor validation + reset on mismatch,
-and serialization of the link-down ring reset against in-flight RX polls)
-is prepared and was **validated on this card** in November 2026 through
-instrumented test builds: 1.5 M+ descriptors validated with zero
-mismatches, zero Oops across 15+ reset cycles. Submission pending.
+and freeing their buffers. After the v1-v4 review rounds, **v5 of the
+two-patch series was submitted to netdev on 2026-11-25** (bounded wait for
+in-flight RX polls before the link-down ring reset; RRD validation and
+error-path unmap/free), together with a companion one-patch fix for a
+pre-existing use-after-free in `atl1c_remove()` (cancel `common_task` after
+`unregister_netdev()`). Both were validated as far as emulated hardware
+allows: instrumented DKMS builds on this card handled 27 link-down events
+with the link recovering every time, and the poll-sync wait was observed
+iterating and completing under load. Details and reusable kernel lessons:
+[atl1c-hw-test-campaigns.md](docs/atl1c-hw-test-campaigns.md).
 
 See **[atl1c upstream patch status](docs/atl1c-upstream-status.md)** for
-the submission links, verification details, the stable-queue state of the
-accepted oversized-RX fix, and the explicit distinction between accepted
-upstream changes and the local DKMS packages.
+the submission links, review history, verification details, the
+stable-queue state of the accepted oversized-RX fix, and the explicit
+distinction between accepted upstream changes and the local DKMS packages.
 
 ## Quick start
 
