@@ -1,6 +1,6 @@
 # atl1c upstream patch status
 
-Last updated: 2026-11-19.
+Last updated: 2026-11-25.
 
 This page tracks the upstream status of the `atl1c` fixes related to the
 CCR2004-1G-2XS-PCIe work. It distinguishes accepted changes from patches
@@ -166,6 +166,74 @@ warning on 2/2 (one 84-column line in a debug printk). As of
 2026-11-18 the `sashiko-nipa` and contest checks are still pending and
 no review comments have arrived; both patches are in state `new`.
 
+### v5 (submitted to netdev on 2026-11-25)
+
+The Sashiko AI review of v4 (2026-11-21) raised six findings: on 1/2, the
+`__AT_DOWN` exit still reset the rings without having waited (High), an
+unbounded wait under threaded busy-poll (Medium) and the TX side of the same
+reset (High, pre-existing); on 2/2, a missing `dma_rmb()` between the
+valid-bit test and `word0` (Medium), the `schedule_work()` lifetime /
+`common_task` use-after-free (High, pre-existing with a new trigger) and the
+missing serialization of `common_task` against the rtnl holders (High,
+pre-existing).
+
+v5 was additionally reviewed by a second independent model before posting.
+That review confirmed the code as sound and corrected three written claims,
+amended before submission:
+
+- the barrier rationale of 1/2 was factually wrong: `netif_carrier_off()` is
+  a fully ordered `test_and_set_bit()` (not a "plain bit store"), and
+  `__napi_schedule()` contains no `test_and_set_bit(NAPI_STATE_SCHED)` — the
+  bit is set by the `try_cmpxchg()` in `napi_schedule_prep()`. The handshake
+  is a store-buffer pattern; the barrier is now an explicit `smp_mb()`,
+  correct independently of how `netif_carrier_off()` sets its bit and on
+  stable trees without commit `415d83249709`;
+- the cover letter originally attributed two DMAR Read faults observed on
+  24/11 to the MTU-change teardowns / the pre-existing TX race. Timestamp
+  analysis disproved the attribution (the faults follow MTU changes #1 and
+  #3 by ~1.26 s and *precede* the link-down interrupt); they are now
+  disclosed as an observation without attribution;
+- the test-coverage claims now state exactly which paths were and were not
+  exercised: see [atl1c-hw-test-campaigns.md](atl1c-hw-test-campaigns.md).
+
+v5 changes vs v4:
+
+- **1/2** — on `__AT_DOWN`, skip the link-down reset entirely (the
+  concurrent teardown resets the rings after `napi_disable()`); bound the
+  wait (500 × 1-2 ms) and skip with a ratelimited warning on timeout; wait
+  only on the work-item path (`atl1c_up()` passes `false`); explicit
+  `smp_mb()` between the carrier-off store and the `NAPI_STATE_SCHED`
+  sampling.
+- **2/2** — `dma_rmb()` between the valid-bit test and the rest of the
+  descriptor; hardware-coverage caveat (validation ran on an emulated
+  single-queue AR8151 only, `Tested-by:` on genuine Atheros hardware
+  welcome) and a note that it applies textually only on top of 1/2.
+
+Submitted 2026-11-25 11:31 UTC as patchwork series **1222008** (1/2 id
+15021737, 2/2 id 15021738), base `netdev/net` `aa40afa831eb` (the atheros
+tree is unchanged up to `32756b82fde8` as of 25/11):
+
+https://lore.kernel.org/netdev/20261125113120.99743-1-federico@rimpianto.com/
+
+Point-by-point replies to the v4 Sashiko review (including `pw-bot: cr`)
+were posted on the v4 thread on 2026-11-25.
+
+### Companion one-liner: cancel common_task in atl1c_remove()
+
+The pre-existing use-after-free flagged by the v4 review — `atl1c_remove()`
+frees the netdev and adapter without ever cancelling `common_task`, and
+`atl1c_close()` cancels it *before* `atl1c_down()` frees the IRQ, so a
+link-change interrupt in between re-queues the work — is fixed by a separate
+single-patch submission posted the same day (the v5 series deliberately stays
+at two patches):
+
+`net: atl1c: cancel the common_task work in atl1c_remove()` —
+`cancel_work_sync()` after `unregister_netdev()`, where the IRQ is freed,
+NAPI is disabled and the TX watchdog is stopped.
+`Fixes: 43250ddd75a3`, Cc stable. Patchwork 15021740 (series 1222010):
+
+https://lore.kernel.org/netdev/20261125113141.99792-1-federico@rimpianto.com/
+
 ## Hardware validation (2026-11-16/17, CCR2004-1G-2XS-PCIe)
 
 The v4 candidate was validated on the actual card through instrumented
@@ -192,6 +260,13 @@ the `skb_shared_info` the next free crashes the host (this is the
 mitigated in DKMS package 1.3 and is **not** part of the upstream
 submission.
 
+The v5 validation campaigns of 2026-11-24/25 (27 link-down events; the
+link-down wait observed iterating and completing benignly four times under
+load; timeout branch not exercised; first recorded live firing of the 1.3
+shared-info guard) are documented in
+[atl1c-hw-test-campaigns.md](atl1c-hw-test-campaigns.md), with the scripts
+in [`scripts/atl1c-test/`](../scripts/atl1c-test/).
+
 ## Verification of v3
 
 The patch was checked against `netdev/net`:
@@ -212,8 +287,9 @@ race are not addressed by this patch and require separate work.
 | **1.3** (`driver/atl1c-dkms-1.3/`) | **current production** | 1.1 + RX shared-info guard against the misplaced device DMA write (corrupt skb leaked, logged, counted in `rx_shinfo_corrupt`) + module metadata (`MODULE_VERSION`, maintainer `MODULE_AUTHOR`, version in `ethtool -i`) |
 | 1.1 (`driver/atl1c-dkms-1.1/`) | superseded | upstream + MTU/rx-buffer handling + oversized-frame drop (`c4ba1716853d`) + tpd_cons fix (`36c2009d90f2`). **Exposed to the host-fatal GPF** when a misplaced write hits a shared info — upgrade to 1.3 |
 | 1.2 | retired, never published here | local build of the v3 leak fix; superseded by the v4 rework. Do not install |
-| 0.4.x | test builds, never published | instrumented diagnostics used for the 2026-11-16/17 hardware campaign (see `docs/atl1c-misplaced-dma-write.md`); version numbers deliberately below 1.1 so `dkms autoinstall` can never promote them |
+| 0.4.x | test builds, never published | instrumented diagnostics for the hardware campaigns (see `docs/atl1c-misplaced-dma-write.md` and `docs/atl1c-hw-test-campaigns.md`); version numbers deliberately below 1.1 so `dkms autoinstall` can never promote them. **0.4.5** = 1.3 + v5 candidate + read-only `diag_*` counters: the hardware-tested build of record (srcversion `82F3F15ABFC9A037A585BD2`). **0.4.6** = 0.4.5 aligned with the final amended candidate (explicit `smp_mb()`; srcversion `8B1B51099A36CBAB6E87D9D`), build-verified only |
 
-None of the packages above contains the v4 leak fix yet; it will land in
-a future package version once accepted upstream. The submitted v3 patch
-remains in `driver/patches/` for reference.
+None of the published packages contains the leak fix yet; the v5 candidate
+lives in the 0.4.5/0.4.6 test builds and will land in a future package
+version once accepted upstream. The submitted patches are retained in
+`driver/patches/` for reference.

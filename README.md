@@ -91,6 +91,7 @@ This repository contains:
 | `docs/mac-telnet-management.md` | Layer-2 management of the card without any IP: MAC-Telnet suite (`mndp`, `macping`, `mactelnet`) built from source on Debian/PVE, card discovery by MAC, console access — with real lab output |
 | `docs/atl1c-upstream-status.md` | Accepted upstream commits, stable-queue state, pending submissions and verification status |
 | `docs/atl1c-misplaced-dma-write.md` | The card's misplaced-DMA-write quirk: symptoms, instrumented builds, evidence, hypothesis testing, mitigation in 1.3 |
+| `docs/atl1c-hw-test-campaigns.md` | Hardware validation of the v5 upstream candidate (2026-11-24/25 campaigns): method, results, reusable kernel lessons; scripts in `scripts/atl1c-test/` |
 | `docs/CCR2004-PCIe-Report.md` | Full technical report: crash analysis, kernel logs, experiment matrix |
 | `logs/` | Raw evidence: kernel journals and procedure logs from the crash experiments and the 2026-11 driver campaign |
 
