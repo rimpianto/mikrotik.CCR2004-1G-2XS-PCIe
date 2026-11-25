@@ -234,6 +234,14 @@ NAPI is disabled and the TX watchdog is stopped.
 
 https://lore.kernel.org/netdev/20261125113141.99792-1-federico@rimpianto.com/
 
+On 2026-11-25 the `netdev-bot+sinfo` bot asked this patch to state its test
+hardware. The answer — not tested on real hardware, found by inspection,
+build-tested W=1+sparse, lab context on the emulated-AR8151 card — was
+delivered on-list in plain text (a first attempt from a mail client was
+rejected by the list servers as HTML, and the plain-text resend was
+accidentally posted twice; both copies are identical):
+https://lore.kernel.org/netdev/20261125121328.2662-1-federico@rimpianto.com/
+
 ## Hardware validation (2026-11-16/17, CCR2004-1G-2XS-PCIe)
 
 The v4 candidate was validated on the actual card through instrumented
